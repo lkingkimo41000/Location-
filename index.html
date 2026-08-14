@@ -1,0 +1,658 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<title>Adam Location · تطبيق الزبون</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'Segoe UI', Tahoma, sans-serif; background: #0F1216; color: #F1EEE6; min-height: 100vh; }
+  
+  #splash {
+    position: fixed; inset: 0; z-index: 9999; background: #0F1216;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    transition: opacity 0.5s;
+  }
+  #splash.hidden { opacity: 0; pointer-events: none; }
+  #splash .logo { font-size: 72px; margin-bottom: 10px; }
+  #splash h1 { font-size: 28px; color: #F2B134; }
+  #splash .loader {
+    margin-top: 20px;
+    width: 40px; height: 40px;
+    border: 4px solid #232833;
+    border-top-color: #F2B134;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  #splash .status { margin-top: 12px; font-size: 13px; color: #8B93A1; }
+  
+  .container { max-width: 480px; margin: 0 auto; padding: 12px; }
+  .card { background: #1A1E25; border: 1px solid #323847; border-radius: 12px; padding: 16px; margin-bottom: 12px; }
+  
+  .btn {
+    display: block; width: 100%; padding: 14px; border: none; border-radius: 10px;
+    font-size: 16px; font-weight: bold; cursor: pointer; text-align: center;
+    transition: transform 0.15s;
+  }
+  .btn:active { transform: scale(0.96); }
+  .btn-primary { background: #F2B134; color: #1A1305; }
+  .btn-success { background: #3FA796; color: #fff; }
+  .btn-danger { background: #E5573F; color: #fff; }
+  .btn-subtle { background: #232833; color: #F1EEE6; border: 1px solid #323847; }
+  .btn-sm { padding: 8px 14px; font-size: 13px; width: auto; display: inline-flex; }
+  
+  .input {
+    width: 100%; padding: 12px; background: #232833; border: 1px solid #323847;
+    border-radius: 10px; color: #F1EEE6; font-size: 14px; outline: none;
+  }
+  .input:focus { border-color: #F2B134; }
+  .input-group { margin-bottom: 12px; }
+  .input-group label { display: block; font-size: 13px; color: #8B93A1; margin-bottom: 4px; font-weight: bold; }
+  
+  .text-center { text-align: center; }
+  .text-muted { color: #8B93A1; }
+  .mt-8 { margin-top: 8px; }
+  .mb-8 { margin-bottom: 8px; }
+  .flex-between { display: flex; justify-content: space-between; align-items: center; }
+  
+  .badge {
+    display: inline-block; padding: 3px 10px; border-radius: 999px;
+    font-size: 11px; font-weight: bold;
+  }
+  .badge-success { background: rgba(63,167,150,0.2); color: #3FA796; border: 1px solid rgba(63,167,150,0.4); }
+  .badge-danger { background: rgba(229,87,63,0.2); color: #E5573F; border: 1px solid rgba(229,87,63,0.4); }
+  .badge-warning { background: rgba(242,177,52,0.2); color: #F2B134; border: 1px solid rgba(242,177,52,0.4); }
+  .badge-info { background: rgba(91,141,239,0.2); color: #5B8DEF; border: 1px solid rgba(91,141,239,0.4); }
+  
+  .tabbar {
+    display: flex; gap: 4px; background: #1A1E25; border: 1px solid #323847;
+    border-radius: 12px; padding: 4px; margin-bottom: 16px; overflow-x: auto;
+  }
+  .tabbar button {
+    flex: 1; padding: 10px; border: none; background: transparent; color: #8B93A1;
+    font-size: 13px; font-weight: bold; border-radius: 9px; cursor: pointer; white-space: nowrap;
+  }
+  .tabbar button.active { background: #F2B134; color: #1A1305; }
+  
+  .car-item {
+    background: #232833; border: 1px solid #323847; border-radius: 10px;
+    padding: 12px; margin-bottom: 10px;
+  }
+  .car-item .name { font-weight: bold; font-size: 15px; }
+  .car-item .info { color: #8B93A1; font-size: 12px; }
+  .car-item .price { color: #F2B134; font-weight: bold; font-size: 16px; }
+  
+  .header {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 10px 0; margin-bottom: 16px; border-bottom: 1px solid #232833;
+  }
+  .header-title { font-size: 20px; font-weight: bold; color: #F2B134; }
+  .header-user { font-size: 13px; color: #8B93A1; }
+  
+  .empty { text-align: center; padding: 40px 16px; color: #8B93A1; }
+  .empty .icon { font-size: 40px; display: block; margin-bottom: 8px; }
+  
+  .toast {
+    position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%);
+    padding: 12px 24px; border-radius: 12px; font-weight: bold; font-size: 14px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.4); z-index: 100;
+    opacity: 0; transition: opacity 0.3s; pointer-events: none; max-width: 90%;
+  }
+  .toast.show { opacity: 1; }
+  .toast.success { background: #3FA796; color: #fff; }
+  .toast.error { background: #E5573F; color: #fff; }
+  
+  .modal-overlay {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 50;
+    display: flex; align-items: center; justify-content: center; padding: 20px;
+  }
+  .modal-box {
+    background: #1A1E25; border: 1px solid #323847; border-radius: 16px;
+    padding: 20px; width: 100%; max-width: 400px; max-height: 90vh; overflow-y: auto;
+  }
+  .modal-header {
+    display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;
+  }
+  .modal-header h3 { font-size: 18px; }
+  .modal-close { background: none; border: none; color: #8B93A1; font-size: 24px; cursor: pointer; }
+</style>
+</head>
+<body>
+
+<div id="splash">
+  <div class="logo">🚗</div>
+  <h1>Adam Location</h1>
+  <div class="loader"></div>
+  <div class="status" id="splash-status">جاري التحميل...</div>
+</div>
+
+<div id="toast" class="toast"></div>
+<div id="app"></div>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+
+<script>
+/* ============================================================
+   🔥 إعدادات Firebase
+   ============================================================ */
+const firebaseConfig = {
+  apiKey: "AIzaSyCNp8pVNX84MyMgIsuiV9K6DE3tximsrRg",
+  authDomain: "location-c06ec.firebaseapp.com",
+  databaseURL: "https://location-c06ec-default-rtdb.europe-west1.firebasedatabase.app",
+  projectId: "location-c06ec",
+  storageBucket: "location-c06ec.firebasestorage.app",
+  messagingSenderId: "418304217437",
+  appId: "1:418304217437:web:3656ef204f2b453abe18b4"
+};
+
+const STORAGE_KEY = "rental-db-v2";
+
+/* ============================================================
+   📦 الأدوات المساعدة
+   ============================================================ */
+const todayStr = () => new Date().toISOString().slice(0, 10);
+const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+const addDays = (dateStr, n) => { const d = new Date(dateStr); d.setDate(d.getDate() + n); return d.toISOString().slice(0, 10); };
+const daysBetween = (a, b) => Math.round((new Date(b) - new Date(a)) / 86400000);
+const fmtMoney = (n) => `${Number(n || 0).toLocaleString("en-US")} د.ج`;
+const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+
+function showToast(msg, type = "success") {
+  const el = document.getElementById("toast");
+  if (!el) return;
+  el.textContent = msg;
+  el.className = `toast show ${type}`;
+  clearTimeout(window._toastTimer);
+  window._toastTimer = setTimeout(() => { el.className = "toast"; }, 3000);
+}
+
+/* ============================================================
+   🗄️ البيانات الافتراضية
+   ============================================================ */
+function getDefaultData() {
+  const t = todayStr();
+  return {
+    cars: [
+      { id: "c1", plate: "أ ب ج 1234", brand: "تويوتا", model: "كورولا", year: 2022, status: "available", currentKm: 18500, dailyPrice: 12000, oilIntervalKm: 5000, lastOilKm: 15000, insuranceExpiry: addDays(t, 20), inspectionExpiry: addDays(t, 200) },
+      { id: "c2", plate: "د هـ و 5678", brand: "هيونداي", model: "إلنترا", year: 2021, status: "available", currentKm: 42000, dailyPrice: 10000, oilIntervalKm: 5000, lastOilKm: 41800, insuranceExpiry: addDays(t, 5), inspectionExpiry: addDays(t, 15) },
+      { id: "c3", plate: "ز ح ط 9012", brand: "كيا", model: "سيراتو", year: 2023, status: "available", currentKm: 9000, dailyPrice: 11000, oilIntervalKm: 5000, lastOilKm: 4500, insuranceExpiry: addDays(t, 300), inspectionExpiry: addDays(t, 300) },
+      { id: "c4", plate: "ك ل م 3456", brand: "نيسان", model: "صني", year: 2020, status: "available", currentKm: 61000, dailyPrice: 8500, oilIntervalKm: 5000, lastOilKm: 58200, insuranceExpiry: addDays(t, 60), inspectionExpiry: addDays(t, 90) },
+    ],
+    customers: [],
+    reservations: [],
+    kmHistory: [],
+    finances: [],
+    contact: { phone: "0555555555", platformLink: "https://wa.me/213555555555", platformLabel: "واتساب" },
+    passwordResetRequests: []
+  };
+}
+
+/* ============================================================
+   💾 قاعدة البيانات
+   ============================================================ */
+let db;
+let dbRef = null;
+let firebaseReady = false;
+let appStarted = false;
+
+try {
+  const saved = localStorage.getItem(STORAGE_KEY);
+  db = saved ? JSON.parse(saved) : getDefaultData();
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(db));
+} catch (e) {
+  db = getDefaultData();
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(db));
+}
+
+function saveLocal() {
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(db)); } catch (e) {}
+}
+
+function saveData() {
+  saveLocal();
+  if (dbRef && firebaseReady) {
+    dbRef.set(db).catch(() => {});
+  }
+}
+
+/* ============================================================
+   🔥 تهيئة Firebase
+   ============================================================ */
+function initFirebase() {
+  const statusEl = document.getElementById('splash-status');
+  
+  try {
+    if (typeof firebase === 'undefined') {
+      throw new Error('Firebase غير محمل');
+    }
+    
+    firebase.initializeApp(firebaseConfig);
+    dbRef = firebase.database().ref(STORAGE_KEY);
+    firebaseReady = true;
+    
+    if (statusEl) statusEl.textContent = '✅ متصل بالخادم';
+    startSync();
+    
+  } catch (e) {
+    console.warn('فشل تهيئة Firebase:', e.message);
+    if (statusEl) statusEl.textContent = '⚠️ تعذر الاتصال، بيانات محلية';
+    setTimeout(() => {
+      if (!appStarted) {
+        appStarted = true;
+        hideSplash();
+        render();
+        showToast('⚠️ وضع غير متصل - بيانات محلية');
+      }
+    }, 3000);
+  }
+}
+
+/* ============================================================
+   🔄 المزامنة مع Firebase
+   ============================================================ */
+let firstSync = true;
+
+function startSync() {
+  if (!dbRef) return;
+  
+  dbRef.on('value', (snapshot) => {
+    const remote = snapshot.val();
+    if (remote) {
+      db = remote;
+      saveLocal();
+      if (firstSync) {
+        firstSync = false;
+        if (!appStarted) {
+          appStarted = true;
+          hideSplash();
+          render();
+          showToast('✅ مزامنة مع الخادم');
+        }
+      } else {
+        render();
+      }
+    } else if (firstSync) {
+      dbRef.set(db).then(() => {
+        console.log('✅ تم إرسال البيانات الأولية');
+        firstSync = false;
+        if (!appStarted) {
+          appStarted = true;
+          hideSplash();
+          render();
+          showToast('✅ مزامنة مع الخادم');
+        }
+      }).catch(() => {
+        firstSync = false;
+        if (!appStarted) {
+          appStarted = true;
+          hideSplash();
+          render();
+          showToast('⚠️ بيانات محلية فقط');
+        }
+      });
+    }
+  }, () => {
+    if (firstSync && !appStarted) {
+      firstSync = false;
+      setTimeout(() => {
+        if (!appStarted) {
+          appStarted = true;
+          hideSplash();
+          render();
+          showToast('⚠️ وضع غير متصل - بيانات محلية');
+        }
+      }, 3000);
+    }
+  });
+}
+
+function hideSplash() {
+  const el = document.getElementById('splash');
+  if (el) {
+    el.classList.add('hidden');
+    setTimeout(() => { el.style.display = 'none'; }, 500);
+  }
+}
+
+/* ============================================================
+   📱 حالة التطبيق
+   ============================================================ */
+let state = {
+  customer: null,
+  tab: 'cars',
+  modal: null,
+  selectedCar: null,
+  startDate: todayStr(),
+  endDate: addDays(todayStr(), 1)
+};
+
+/* ============================================================
+   🖥️ التصيير
+   ============================================================ */
+function render() {
+  const app = document.getElementById('app');
+  if (!app) return;
+  if (!state.customer) {
+    app.innerHTML = renderLogin();
+  } else {
+    app.innerHTML = renderApp();
+  }
+  if (state.modal) {
+    app.innerHTML += renderModal();
+  }
+}
+
+/* ============================================================
+   🏠 شاشة تسجيل الدخول
+   ============================================================ */
+function renderLogin() {
+  return `
+    <div class="container" style="display:flex;flex-direction:column;justify-content:center;min-height:80vh;">
+      <div class="text-center" style="margin-bottom:20px;">
+        <div style="font-size:48px;">🚗</div>
+        <h1 style="font-size:24px;color:#F2B134;">تسجيل الدخول</h1>
+        <p style="color:#8B93A1;font-size:13px;">أدخل بياناتك للدخول إلى حسابك</p>
+      </div>
+      <div class="card">
+        <div class="input-group"><label>📱 رقم الهاتف</label><input id="login-phone" class="input" placeholder="05xxxxxxxx" /></div>
+        <div class="input-group"><label>🔑 الرمز السري</label><input id="login-password" class="input" type="password" placeholder="******" /></div>
+        <button class="btn btn-primary" onclick="customerLogin()">🔑 تسجيل الدخول</button>
+        <div class="text-center mt-8"><button class="btn btn-subtle" onclick="openRegister()" style="width:auto;padding:8px 16px;font-size:13px;">📝 إنشاء حساب جديد</button></div>
+        <div class="text-center mt-8"><button style="background:none;border:none;color:#8B93A1;cursor:pointer;font-size:12px;" onclick="openForgotPassword()">نسيت الرمز السري؟</button></div>
+      </div>
+    </div>
+  `;
+}
+
+/* ============================================================
+   📱 التطبيق الرئيسي
+   ============================================================ */
+function renderApp() {
+  return `
+    <div class="container">
+      <div class="header">
+        <div class="header-title">🚗 Adam</div>
+        <div class="header-user">👤 ${esc(state.customer.name)} <button onclick="customerLogout()" style="background:none;border:none;color:#E5573F;cursor:pointer;font-size:12px;margin-left:6px;">خروج</button></div>
+      </div>
+      
+      <div class="tabbar">
+        <button class="${state.tab === 'cars' ? 'active' : ''}" onclick="setTab('cars')">🚗 سيارات</button>
+        <button class="${state.tab === 'reservations' ? 'active' : ''}" onclick="setTab('reservations')">📅 حجوزاتي</button>
+        <button class="${state.tab === 'profile' ? 'active' : ''}" onclick="setTab('profile')">👤 حسابي</button>
+      </div>
+      
+      ${state.tab === 'cars' ? renderCars() : ''}
+      ${state.tab === 'reservations' ? renderReservations() : ''}
+      ${state.tab === 'profile' ? renderProfile() : ''}
+    </div>
+  `;
+}
+
+/* ============================================================
+   🚗 عرض السيارات
+   ============================================================ */
+function renderCars() {
+  const available = db.cars.filter(c => c.status === 'available');
+  return `
+    <div class="flex-between mb-8">
+      <div style="font-weight:bold;">🚗 السيارات المتاحة (${available.length})</div>
+      <a href="${db.contact.platformLink || '#'}" target="_blank" style="color:#F2B134;font-size:13px;text-decoration:none;">📱 ${db.contact.platformLabel || 'اتصل بنا'}</a>
+    </div>
+    ${available.length === 0 ? `<div class="empty"><div class="icon">😔</div><div>لا توجد سيارات متاحة</div></div>` : 
+    available.map(car => `
+      <div class="car-item">
+        <div class="flex-between">
+          <div><div class="name">${esc(car.brand)} ${esc(car.model)}</div><div class="info">${car.year} · ${esc(car.plate)}</div></div>
+          <span class="badge badge-success">متاحة</span>
+        </div>
+        <div class="flex-between" style="margin-top:8px;">
+          <div class="price">${fmtMoney(car.dailyPrice)} <span style="font-size:12px;color:#8B93A1;font-weight:400;">/ يوم</span></div>
+          <button class="btn btn-primary btn-sm" onclick="openBooking('${car.id}')">📅 احجز</button>
+        </div>
+      </div>
+    `).join('')}
+  `;
+}
+
+/* ============================================================
+   📅 حجوزاتي
+   ============================================================ */
+function renderReservations() {
+  const myRes = db.reservations.filter(r => r.customerId === state.customer.id);
+  const statusMap = { pending: 'badge-warning', confirmed: 'badge-success', completed: 'badge-info', cancelled: 'badge-danger' };
+  return `
+    <div style="font-weight:bold;margin-bottom:12px;">📅 حجوزاتي (${myRes.length})</div>
+    ${myRes.length === 0 ? `<div class="empty"><div class="icon">📭</div><div>لا توجد حجوزات</div></div>` :
+    myRes.map(r => {
+      const car = db.cars.find(c => c.id === r.carId);
+      const st = statusMap[r.status] || 'badge-warning';
+      return `<div class="car-item">
+        <div class="flex-between">
+          <div><div class="name">${car ? esc(car.brand) + ' ' + esc(car.model) : 'سيارة'}</div><div class="info">${r.startDate} → ${r.endDate} · ${daysBetween(r.startDate, r.endDate)} يوم</div></div>
+          <span class="badge ${st}">${r.status === 'pending' ? 'بانتظار' : r.status === 'confirmed' ? 'قيد التنفيذ' : r.status === 'completed' ? 'منتهي' : 'ملغى'}</span>
+        </div>
+        <div class="flex-between" style="margin-top:8px;">
+          <div class="price">${fmtMoney(r.totalPrice)}</div>
+          ${r.status === 'pending' ? `<button class="btn btn-danger btn-sm" onclick="cancelReservation('${r.id}')">إلغاء</button>` : ''}
+        </div>
+      </div>`;
+    }).join('')}
+  `;
+}
+
+/* ============================================================
+   👤 حسابي
+   ============================================================ */
+function renderProfile() {
+  const c = state.customer;
+  const count = db.reservations.filter(r => r.customerId === c.id).length;
+  return `<div class="card text-center">
+    <div style="font-size:48px;">👤</div>
+    <div style="font-size:18px;font-weight:bold;">${esc(c.name)}</div>
+    <div style="color:#8B93A1;font-size:14px;">📱 ${esc(c.phone)}</div>
+    ${c.whitelisted ? `<span class="badge badge-success" style="margin-top:8px;">⭐ زبون مميز</span>` : ''}
+    <div style="margin-top:12px;color:#8B93A1;font-size:13px;">📅 عدد الحجوزات: ${count}</div>
+    <div style="color:#8B93A1;font-size:13px;">تاريخ الانضمام: ${c.createdAt}</div>
+  </div>
+  <button class="btn btn-danger" onclick="customerLogout()">🚪 تسجيل الخروج</button>`;
+}
+
+/* ============================================================
+   🖼️ المودال
+   ============================================================ */
+function renderModal() {
+  const m = state.modal;
+  if (!m) return '';
+  
+  let title = '', content = '';
+  
+  if (m.type === 'register') {
+    title = '📝 إنشاء حساب جديد';
+    content = `
+      <div class="input-group"><label>الاسم الكامل</label><input id="reg-name" class="input" placeholder="أحمد محمد" /></div>
+      <div class="input-group"><label>رقم الهاتف</label><input id="reg-phone" class="input" placeholder="05xxxxxxxx" /></div>
+      <div class="input-group"><label>الرمز السري</label><input id="reg-password" class="input" type="password" placeholder="******" /></div>
+      <div class="input-group"><label>تأكيد الرمز</label><input id="reg-confirm" class="input" type="password" placeholder="******" /></div>
+      <button class="btn btn-primary" onclick="submitRegister()">✅ تسجيل</button>
+    `;
+  }
+  
+  if (m.type === 'forgotPassword') {
+    title = '🔑 استعادة الرمز السري';
+    content = `
+      <div class="input-group"><label>رقم الهاتف</label><input id="forgot-phone" class="input" placeholder="05xxxxxxxx" /></div>
+      <div class="text-muted" style="font-size:12px;margin-bottom:12px;">سيتم إرسال طلب إلى الإدارة</div>
+      <button class="btn btn-primary" onclick="submitForgotPassword()">📤 إرسال</button>
+    `;
+  }
+  
+  if (m.type === 'booking') {
+    const car = state.selectedCar;
+    const days = daysBetween(state.startDate, state.endDate);
+    title = `📅 حجز ${esc(car.brand)} ${esc(car.model)}`;
+    content = `
+      <div style="margin-bottom:12px;">
+        <div class="text-muted">${esc(car.brand)} ${esc(car.model)} · ${car.year}</div>
+        <div style="font-weight:bold;color:#F2B134;font-size:18px;">${fmtMoney(car.dailyPrice)} / يوم</div>
+      </div>
+      <div class="input-group"><label>تاريخ الاستلام</label><input id="book-start" class="input" type="date" value="${state.startDate}" /></div>
+      <div class="input-group"><label>تاريخ التسليم</label><input id="book-end" class="input" type="date" value="${state.endDate}" /></div>
+      <div style="background:#232833;border-radius:10px;padding:12px;text-align:center;margin-bottom:12px;">
+        <div class="text-muted" style="font-size:13px;">الإجمالي</div>
+        <div style="font-size:20px;font-weight:bold;color:#F2B134;">${fmtMoney(days * car.dailyPrice)}</div>
+        <div style="font-size:12px;color:#8B93A1;">${days} يوم × ${fmtMoney(car.dailyPrice)}</div>
+      </div>
+      <button class="btn btn-success" onclick="submitBooking()">✅ تأكيد الحجز</button>
+    `;
+  }
+  
+  return `
+    <div class="modal-overlay" onclick="if(event.target===this)closeModal()">
+      <div class="modal-box">
+        <div class="modal-header">
+          <h3>${title}</h3>
+          <button class="modal-close" onclick="closeModal()">✕</button>
+        </div>
+        ${content}
+      </div>
+    </div>
+  `;
+}
+
+/* ============================================================
+   🎯 دوال الزبون
+   ============================================================ */
+function customerLogin() {
+  const phone = document.getElementById('login-phone').value.trim();
+  const password = document.getElementById('login-password').value.trim();
+  if (!phone || !password) return showToast('أدخل رقم الهاتف والرمز السري', 'error');
+  const customer = db.customers.find(c => c.phone === phone && c.password === password);
+  if (!customer) return showToast('رقم الهاتف أو الرمز السري غير صحيح', 'error');
+  if (customer.blacklisted) return showToast('❌ هذا الحساب محظور، تواصل مع الإدارة', 'error');
+  state.customer = customer;
+  state.tab = 'cars';
+  render();
+  showToast(`مرحباً ${customer.name} 👋`);
+}
+
+function customerLogout() {
+  state.customer = null;
+  state.tab = 'cars';
+  render();
+  showToast('تم تسجيل الخروج');
+}
+
+function openRegister() {
+  state.modal = { type: 'register' };
+  render();
+}
+
+function submitRegister() {
+  const name = document.getElementById('reg-name').value.trim();
+  const phone = document.getElementById('reg-phone').value.trim();
+  const password = document.getElementById('reg-password').value.trim();
+  const confirm = document.getElementById('reg-confirm').value.trim();
+  if (!name || !phone || !password) return showToast('أكمل جميع الحقول', 'error');
+  if (password.length < 4) return showToast('الرمز السري 4 أحرف على الأقل', 'error');
+  if (password !== confirm) return showToast('الرمز السري غير متطابق', 'error');
+  if (db.customers.find(c => c.phone === phone)) return showToast('هذا الرقم مسجل بالفعل', 'error');
+  const newCustomer = { id: uid(), name, phone, password, whitelisted: false, blacklisted: false, createdAt: todayStr() };
+  db.customers.push(newCustomer);
+  saveData();
+  state.customer = newCustomer;
+  state.modal = null;
+  state.tab = 'cars';
+  render();
+  showToast(`✅ مرحباً ${name}`);
+}
+
+function openForgotPassword() {
+  state.modal = { type: 'forgotPassword' };
+  render();
+}
+
+function submitForgotPassword() {
+  const phone = document.getElementById('forgot-phone').value.trim();
+  if (!phone) return showToast('أدخل رقم الهاتف', 'error');
+  const customer = db.customers.find(c => c.phone === phone);
+  if (!customer) return showToast('هذا الرقم غير مسجل', 'error');
+  if (!db.passwordResetRequests) db.passwordResetRequests = [];
+  db.passwordResetRequests.push({ id: uid(), customerId: customer.id, name: customer.name, phone: customer.phone, requestedAt: todayStr(), status: 'pending' });
+  saveData();
+  state.modal = null;
+  render();
+  showToast('✅ تم إرسال طلب استعادة الرمز السري');
+}
+
+function openBooking(carId) {
+  state.selectedCar = db.cars.find(c => c.id === carId);
+  state.startDate = todayStr();
+  state.endDate = addDays(todayStr(), 1);
+  state.modal = { type: 'booking' };
+  render();
+}
+
+function submitBooking() {
+  const car = state.selectedCar;
+  const startDate = document.getElementById('book-start').value;
+  const endDate = document.getElementById('book-end').value;
+  if (!startDate || !endDate) return showToast('اختر التواريخ', 'error');
+  if (daysBetween(startDate, endDate) < 1) return showToast('تاريخ النهاية بعد البداية', 'error');
+  const overlapping = db.reservations.some(r => r.carId === car.id && r.status !== 'cancelled' && r.status !== 'completed' &&
+    ((startDate >= r.startDate && startDate < r.endDate) || (endDate > r.startDate && endDate <= r.endDate) || (startDate <= r.startDate && endDate >= r.endDate)));
+  if (overlapping) return showToast('هذه السيارة محجوزة', 'error');
+  const days = daysBetween(startDate, endDate);
+  const totalPrice = days * car.dailyPrice;
+  db.reservations.push({ id: uid(), carId: car.id, customerId: state.customer.id, customerName: state.customer.name, customerPhone: state.customer.phone, startDate, endDate, status: 'pending', totalPrice, createdAt: todayStr() });
+  saveData();
+  state.modal = null;
+  render();
+  showToast('✅ تم إرسال طلب الحجز');
+}
+
+function cancelReservation(resId) {
+  if (!confirm('تأكيد إلغاء الحجز؟')) return;
+  const r = db.reservations.find(r => r.id === resId);
+  if (!r || r.status !== 'pending') return showToast('لا يمكن الإلغاء', 'error');
+  r.status = 'cancelled';
+  saveData();
+  render();
+  showToast('تم إلغاء الحجز');
+}
+
+function setTab(tab) {
+  state.tab = tab;
+  render();
+}
+
+function closeModal() {
+  state.modal = null;
+  render();
+}
+
+/* ============================================================
+   🚀 بدء التطبيق
+   ============================================================ */
+setTimeout(() => {
+  if (typeof firebase !== 'undefined') {
+    initFirebase();
+  } else {
+    setTimeout(() => {
+      if (!appStarted) {
+        appStarted = true;
+        hideSplash();
+        render();
+        showToast('⚠️ وضع غير متصل - بيانات محلية');
+      }
+    }, 3000);
+  }
+}, 500);
+
+console.log('🚗 Adam Location - تطبيق الزبون');
+console.log('📊 عدد السيارات:', db.cars.length);
+console.log('👥 عدد الزبائن:', db.customers.length);
+</script>
+</body>
+</html>
