@@ -1,0 +1,1618 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<title>Adam Locations · تطبيق الزبون</title>
+<style>
+  /* ====== الأنماط الأساسية ====== */
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: 'Segoe UI', Tahoma, sans-serif;
+    background: #0A0D12;
+    color: #F1EEE6;
+    min-height: 100vh;
+  }
+  
+  /* ====== شاشة التحميل ====== */
+  #splash {
+    position: fixed; inset: 0; z-index: 9999; background: #0A0D12;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    transition: opacity 0.8s;
+  }
+  #splash.hidden { opacity: 0; pointer-events: none; }
+  #splash .logo-car {
+    font-size: 80px;
+    margin-bottom: 10px;
+    animation: float 2s ease-in-out infinite;
+  }
+  @keyframes float {
+    0%, 100% { transform: translateY(0px); }
+    50% { transform: translateY(-10px); }
+  }
+  #splash .brand-name {
+    font-size: 28px;
+    font-weight: 800;
+    background: linear-gradient(135deg, #F2B134, #e6a020, #F2B134);
+    background-size: 200% 200%;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    animation: shimmer 3s ease-in-out infinite;
+  }
+  @keyframes shimmer {
+    0%, 100% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+  }
+  #splash .sub-title {
+    font-size: 14px;
+    color: #8B93A1;
+    margin-top: 4px;
+    letter-spacing: 1px;
+  }
+  #splash .loader {
+    margin-top: 24px;
+    width: 40px; height: 40px;
+    border: 3px solid #232833;
+    border-top-color: #F2B134;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  #splash .status {
+    margin-top: 12px;
+    font-size: 12px;
+    color: #5B8DEF;
+    letter-spacing: 0.5px;
+  }
+  
+  /* ====== التطبيق ====== */
+  .container { max-width: 480px; margin: 0 auto; padding: 12px; }
+  
+  .card {
+    background: #131821;
+    border: 1px solid #1F2633;
+    border-radius: 14px;
+    padding: 16px;
+    margin-bottom: 12px;
+    transition: all 0.3s;
+  }
+  .card:hover { border-color: #F2B13433; }
+  
+  .btn {
+    display: block; width: 100%; padding: 14px; border: none; border-radius: 12px;
+    font-size: 16px; font-weight: 700; cursor: pointer; text-align: center;
+    transition: all 0.3s;
+  }
+  .btn:active { transform: scale(0.96); }
+  .btn-primary {
+    background: linear-gradient(135deg, #F2B134, #d49a2a);
+    color: #0A0D12;
+  }
+  .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(242, 177, 52, 0.3); }
+  .btn-success { background: linear-gradient(135deg, #3FA796, #2d8a7a); color: #fff; }
+  .btn-success:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(63, 167, 150, 0.3); }
+  .btn-danger { background: linear-gradient(135deg, #E5573F, #c94a35); color: #fff; }
+  .btn-danger:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(229, 87, 63, 0.3); }
+  .btn-subtle { background: #1F2633; color: #F1EEE6; border: 1px solid #2F3648; }
+  .btn-subtle:hover { background: #2a3345; }
+  .btn-sm { padding: 8px 14px; font-size: 13px; width: auto; display: inline-flex; align-items: center; gap: 6px; }
+  .btn-block { width: 100%; justify-content: center; }
+  .btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none !important; }
+  
+  .input {
+    width: 100%; padding: 12px 16px; background: #1A212E; border: 1px solid #2F3648;
+    border-radius: 10px; color: #F1EEE6; font-size: 14px; outline: none;
+    transition: border-color 0.3s;
+  }
+  .input:focus { border-color: #F2B134; }
+  .input::placeholder { color: #5B657A; }
+  .input-group { margin-bottom: 14px; }
+  .input-group label {
+    display: block; font-size: 12px; color: #8B93A1;
+    margin-bottom: 4px; font-weight: 600; letter-spacing: 0.5px;
+  }
+  
+  .text-center { text-align: center; }
+  .text-muted { color: #8B93A1; }
+  .text-success { color: #3FA796; }
+  .text-danger { color: #E5573F; }
+  .text-warning { color: #F2B134; }
+  .text-gold { color: #F2B134; }
+  .mt-8 { margin-top: 8px; }
+  .mb-8 { margin-bottom: 8px; }
+  .mt-16 { margin-top: 16px; }
+  .mb-16 { margin-bottom: 16px; }
+  .flex-between { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; }
+  .flex-center { display: flex; align-items: center; gap: 8px; }
+  .gap-8 { gap: 8px; }
+  
+  .badge {
+    display: inline-block; padding: 4px 12px; border-radius: 999px;
+    font-size: 11px; font-weight: 700; letter-spacing: 0.3px;
+  }
+  .badge-success { background: rgba(63,167,150,0.15); color: #3FA796; border: 1px solid rgba(63,167,150,0.3); }
+  .badge-danger { background: rgba(229,87,63,0.15); color: #E5573F; border: 1px solid rgba(229,87,63,0.3); }
+  .badge-warning { background: rgba(242,177,52,0.15); color: #F2B134; border: 1px solid rgba(242,177,52,0.3); }
+  .badge-info { background: rgba(91,141,239,0.15); color: #5B8DEF; border: 1px solid rgba(91,141,239,0.3); }
+  .badge-premium {
+    background: linear-gradient(135deg, #F2B13422, #d49a2a22);
+    color: #F2B134;
+    border: 1px solid #F2B13455;
+  }
+  
+  .tabbar {
+    display: flex; gap: 4px; background: #131821; border: 1px solid #1F2633;
+    border-radius: 14px; padding: 4px; margin-bottom: 16px; overflow-x: auto;
+  }
+  .tabbar button {
+    flex: 1; padding: 10px 12px; border: none; background: transparent; color: #5B657A;
+    font-size: 13px; font-weight: 600; border-radius: 10px; cursor: pointer;
+    white-space: nowrap; transition: all 0.3s;
+  }
+  .tabbar button:hover { color: #F1EEE6; }
+  .tabbar button.active {
+    background: linear-gradient(135deg, #F2B134, #d49a2a);
+    color: #0A0D12;
+    box-shadow: 0 4px 16px rgba(242, 177, 52, 0.25);
+  }
+  
+  /* ====== بطاقة السيارة ====== */
+  .car-card {
+    background: #131821;
+    border: 1px solid #1F2633;
+    border-radius: 14px;
+    padding: 14px;
+    margin-bottom: 12px;
+    transition: all 0.3s;
+    position: relative;
+    overflow: hidden;
+  }
+  .car-card:hover {
+    border-color: #F2B13444;
+    transform: translateY(-3px);
+    box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+  }
+  .car-card .image-placeholder {
+    width: 100%; height: 150px;
+    background: linear-gradient(135deg, #1A212E, #0F151E);
+    border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 56px; margin-bottom: 10px;
+    position: relative;
+  }
+  .car-card .image-placeholder .car-emoji {
+    font-size: 64px;
+    filter: drop-shadow(0 8px 24px rgba(242, 177, 52, 0.2));
+  }
+  .car-card .name { font-weight: 700; font-size: 17px; }
+  .car-card .info { color: #8B93A1; font-size: 13px; }
+  .car-card .price {
+    color: #F2B134;
+    font-weight: 700;
+    font-size: 18px;
+    background: rgba(242, 177, 52, 0.1);
+    padding: 2px 12px;
+    border-radius: 8px;
+  }
+  .car-card .status-badge {
+    position: absolute; top: 14px; right: 14px;
+    padding: 4px 12px; border-radius: 999px;
+    font-size: 10px; font-weight: 700;
+    backdrop-filter: blur(8px);
+  }
+  .car-card .status-badge.available { background: rgba(63,167,150,0.2); color: #3FA796; border: 1px solid rgba(63,167,150,0.3); }
+  .car-card .status-badge.rented { background: rgba(229,87,63,0.2); color: #E5573F; border: 1px solid rgba(229,87,63,0.3); }
+  .car-card .status-badge.maintenance { background: rgba(242,177,52,0.2); color: #F2B134; border: 1px solid rgba(242,177,52,0.3); }
+  
+  .car-card .details-grid {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 2px 12px;
+    margin: 8px 0; font-size: 13px;
+  }
+  .car-card .details-grid .label { color: #5B657A; font-size: 11px; text-transform: uppercase; letter-spacing: 0.3px; }
+  .car-card .details-grid .value { font-weight: 500; }
+  
+  /* ====== الهيدر ====== */
+  .header {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 12px 0; margin-bottom: 16px; border-bottom: 1px solid #1F2633;
+  }
+  .header-brand {
+    display: flex; align-items: center; gap: 8px;
+  }
+  .header-brand .logo-icon { font-size: 28px; }
+  .header-brand .brand-text {
+    font-size: 18px; font-weight: 800;
+    background: linear-gradient(135deg, #F2B134, #d49a2a);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+  .header-brand .brand-sub {
+    font-size: 10px; color: #5B657A; letter-spacing: 0.5px;
+    -webkit-text-fill-color: #5B657A;
+  }
+  .header-user {
+    font-size: 13px; color: #8B93A1;
+    display: flex; align-items: center; gap: 8px;
+  }
+  
+  /* ====== شاشة الدخول ====== */
+  .login-wrapper {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    padding: 24px;
+    background: radial-gradient(ellipse at 50% 20%, #1A212E, #0A0D12 70%);
+    position: relative;
+    overflow: hidden;
+  }
+  .login-wrapper::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(ellipse at 30% 50%, rgba(242, 177, 52, 0.05), transparent 70%);
+    pointer-events: none;
+  }
+  .login-wrapper .hero-car {
+    font-size: 80px;
+    margin-bottom: 6px;
+    filter: drop-shadow(0 20px 60px rgba(242, 177, 52, 0.15));
+    animation: float 3s ease-in-out infinite;
+  }
+  .login-wrapper .brand-main {
+    font-size: 32px;
+    font-weight: 800;
+    background: linear-gradient(135deg, #F2B134, #e6a020, #F2B134);
+    background-size: 200% 200%;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    animation: shimmer 3s ease-in-out infinite;
+    letter-spacing: 0.5px;
+  }
+  .login-wrapper .brand-sub {
+    font-size: 14px;
+    color: #8B93A1;
+    letter-spacing: 2px;
+    margin-top: 2px;
+  }
+  .login-wrapper .brand-slogan {
+    font-size: 12px;
+    color: #5B657A;
+    letter-spacing: 1px;
+    margin-top: 4px;
+    font-style: italic;
+  }
+  .login-wrapper .login-card {
+    width: 100%;
+    max-width: 380px;
+    margin-top: 24px;
+    background: rgba(19, 24, 33, 0.9);
+    backdrop-filter: blur(20px);
+    border: 1px solid #2F3648;
+    border-radius: 20px;
+    padding: 28px 24px;
+    box-shadow: 0 24px 80px rgba(0,0,0,0.6);
+  }
+  .login-wrapper .login-card .input-icon {
+    position: relative;
+  }
+  .login-wrapper .login-card .input-icon .icon {
+    position: absolute;
+    right: 14px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #5B657A;
+    font-size: 16px;
+  }
+  .login-wrapper .login-card .input-icon input {
+    padding-right: 44px;
+  }
+  
+  /* ====== زر تبديل اللغة ====== */
+  .lang-switch {
+    display: flex; gap: 4px;
+    background: #1A212E;
+    border: 1px solid #2F3648;
+    border-radius: 8px;
+    padding: 3px;
+  }
+  .lang-switch button {
+    padding: 4px 10px;
+    border: none;
+    background: transparent;
+    color: #5B657A;
+    font-size: 11px;
+    font-weight: 700;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.3s;
+  }
+  .lang-switch button:hover { color: #F1EEE6; }
+  .lang-switch button.active {
+    background: #F2B134;
+    color: #0A0D12;
+  }
+  
+  .empty { text-align: center; padding: 40px 16px; color: #8B93A1; }
+  .empty .icon { font-size: 48px; display: block; margin-bottom: 8px; }
+  
+  .toast {
+    position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%);
+    padding: 12px 24px; border-radius: 14px; font-weight: 700; font-size: 14px;
+    box-shadow: 0 8px 40px rgba(0,0,0,0.6); z-index: 100;
+    opacity: 0; transition: all 0.4s; pointer-events: none; max-width: 90%;
+    backdrop-filter: blur(10px);
+  }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+  .toast.success { background: rgba(63,167,150,0.95); color: #fff; }
+  .toast.error { background: rgba(229,87,63,0.95); color: #fff; }
+  .toast.warning { background: rgba(242,177,52,0.95); color: #0A0D12; }
+  .toast.info { background: rgba(91,141,239,0.95); color: #fff; }
+  
+  .modal-overlay {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.8);
+    backdrop-filter: blur(8px);
+    z-index: 50; display: flex; align-items: center; justify-content: center;
+    padding: 20px; animation: fadeIn 0.3s;
+  }
+  @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+  .modal-box {
+    background: #131821;
+    border: 1px solid #2F3648;
+    border-radius: 20px;
+    padding: 24px;
+    width: 100%;
+    max-width: 460px;
+    max-height: 90vh;
+    overflow-y: auto;
+    animation: slideUp 0.3s;
+    box-shadow: 0 24px 80px rgba(0,0,0,0.6);
+  }
+  @keyframes slideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+  .modal-header {
+    display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;
+  }
+  .modal-header h3 { font-size: 20px; font-weight: 700; }
+  .modal-close {
+    background: none; border: none; color: #5B657A;
+    font-size: 28px; cursor: pointer; transition: color 0.3s;
+  }
+  .modal-close:hover { color: #E5573F; }
+  
+  .car-detail-image {
+    width: 100%; height: 180px;
+    background: linear-gradient(135deg, #1A212E, #0F151E);
+    border-radius: 12px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 72px; margin-bottom: 12px;
+  }
+  
+  .filter-bar {
+    display: flex; gap: 6px; margin-bottom: 12px; overflow-x: auto; padding-bottom: 4px;
+  }
+  .filter-bar button {
+    padding: 6px 16px; border: 1px solid #2F3648; border-radius: 20px;
+    background: transparent; color: #5B657A; font-size: 12px; font-weight: 600;
+    cursor: pointer; white-space: nowrap; transition: all 0.3s;
+  }
+  .filter-bar button:hover { border-color: #F2B134; color: #F1EEE6; }
+  .filter-bar button.active {
+    background: linear-gradient(135deg, #F2B134, #d49a2a);
+    color: #0A0D12; border-color: #F2B134;
+  }
+  
+  .premium-badge {
+    display: inline-flex; align-items: center; gap: 4px;
+    background: linear-gradient(135deg, #F2B13422, #d49a2a22);
+    padding: 2px 10px; border-radius: 999px;
+    font-size: 10px; font-weight: 700; color: #F2B134;
+    border: 1px solid #F2B13444;
+  }
+  
+  .premium-lock {
+    display: flex; align-items: center; gap: 6px;
+    background: #1A212E; border-radius: 8px; padding: 4px 12px;
+    font-size: 12px; color: #5B657A;
+  }
+  
+  /* سكورول */
+  ::-webkit-scrollbar { width: 3px; height: 3px; }
+  ::-webkit-scrollbar-track { background: #0A0D12; }
+  ::-webkit-scrollbar-thumb { background: #F2B134; border-radius: 3px; }
+</style>
+</head>
+<body>
+
+<div id="splash">
+  <div class="logo-car">🏎️</div>
+  <div class="brand-name">Adam Locations</div>
+  <div class="sub-title" id="splash-sub">🚗 De Voiture · Location de Véhicules</div>
+  <div class="loader"></div>
+  <div class="status" id="splash-status">✨ Chargement en cours...</div>
+</div>
+
+<div id="toast" class="toast"></div>
+<div id="app"></div>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+
+<script>
+/* ============================================================
+   🔥 إعدادات Firebase
+   ============================================================ */
+const firebaseConfig = {
+  apiKey: "AIzaSyCNp8pVNX84MyMgIsuiV9K6DE3tximsrRg",
+  authDomain: "location-c06ec.firebaseapp.com",
+  databaseURL: "https://location-c06ec-default-rtdb.europe-west1.firebasedatabase.app",
+  projectId: "location-c06ec",
+  storageBucket: "location-c06ec.firebasestorage.app",
+  messagingSenderId: "418304217437",
+  appId: "1:418304217437:web:3656ef204f2b453abe18b4"
+};
+
+const STORAGE_KEY = "rental-db-v2";
+
+/* ============================================================
+   🌍 الترجمة (AR/FR)
+   ============================================================ */
+const LANG = {
+  ar: {
+    // عام
+    app_name: 'Adam Locations',
+    app_sub: '🚗 دي فواتور · تأجير السيارات',
+    slogan: '"أناقة الطريق"',
+    loading: 'جاري التحميل...',
+    offline: '⚠️ وضع غير متصل',
+    synced: '✅ مزامنة مع الخادم',
+    
+    // تسجيل الدخول
+    login_title: '🔐 الوصول إلى حسابك',
+    login_sub: 'سجل الدخول لحجز سيارتك',
+    phone: '📱 رقم الهاتف',
+    password: '🔑 كلمة السر',
+    login_btn: '🚀 تسجيل الدخول',
+    register_btn: '📝 إنشاء حساب',
+    forgot_btn: '🔑 نسيت كلمة السر؟',
+    phone_placeholder: '05xxxxxxxx',
+    password_placeholder: '••••••',
+    
+    // تسجيل
+    register_title: '📝 إنشاء حساب',
+    full_name: 'الاسم الكامل',
+    confirm_password: '✅ تأكيد كلمة السر',
+    register_submit: '✅ تسجيل',
+    
+    // استعادة
+    forgot_title: '🔑 استعادة كلمة السر',
+    forgot_sub: 'سيتم إرسال طلب إلى الإدارة',
+    forgot_submit: '📤 إرسال',
+    
+    // التطبيق
+    vehicles: '🚗 السيارات',
+    reservations: '📅 حجوزاتي',
+    profile: '👤 حسابي',
+    logout: '🚪 خروج',
+    welcome: '👋 مرحباً',
+    no_vehicles: 'لا توجد سيارات متاحة',
+    contact: '📱 للتواصل',
+    
+    // بطاقة السيارة
+    year: '📅 السنة',
+    color: '🎨 اللون',
+    km: '📟 الكيلومترات',
+    status: '📋 الحالة',
+    available: '✅ متاحة',
+    rented: '🔴 مؤجَّرة',
+    maintenance: '🔧 في الصيانة',
+    details: '📋 التفاصيل',
+    book: '📅 احجز',
+    price_day: 'د.ج / يوم',
+    vip_required: '⭐ حساب مميز مطلوب للحجز',
+    contact_admin: 'تواصل مع الإدارة',
+    pending: '⏳ قيد المراجعة',
+    unavailable: '🚫 غير متاحة',
+    
+    // التفاصيل
+    last_oil: '🔧 آخر تغيير زيت',
+    plate: '📋 رقم اللوحة',
+    close: '🔙 إغلاق',
+    reserve_now: '📅 احجز الآن',
+    
+    // الحجوزات
+    my_reservations: '📅 حجوزاتي',
+    no_reservations: 'لا توجد حجوزات',
+    browse: '🚗 تصفح السيارات',
+    days: 'يوم',
+    days_plural: 'أيام',
+    pending_status: '⏳ قيد المراجعة',
+    confirmed_status: '✅ مؤكد',
+    completed_status: '📌 منتهي',
+    cancelled_status: '❌ ملغى',
+    cancel: '❌ إلغاء',
+    confirm_cancel: 'تأكيد الإلغاء؟',
+    
+    // الملف الشخصي
+    vip_account: '⭐ حساب مميز',
+    standard_account: '👤 حساب عادي',
+    vip_desc: '🔓 وصول كامل · حجز متاح',
+    standard_desc: '🔒 الحجز غير متاح · تواصل مع الإدارة',
+    reservations_count: '📅 عدد الحجوزات',
+    joined: '📆 تاريخ الانضمام',
+    logout_btn: '🚪 تسجيل الخروج',
+    
+    // الإشعارات
+    fill_fields: 'املأ جميع الحقول',
+    invalid_credentials: 'رقم الهاتف أو كلمة السر غير صحيحة',
+    account_blocked: '❌ الحساب محظور، تواصل مع الإدارة',
+    login_success: '👋 مرحباً',
+    logout_success: '🔓 تم تسجيل الخروج',
+    min_password: '4 أحرف على الأقل',
+    password_mismatch: 'كلمة السر غير متطابقة',
+    phone_exists: 'هذا الرقم مسجل بالفعل',
+    register_success: '✅ مرحباً',
+    phone_required: 'أدخل رقم الهاتف',
+    phone_not_found: 'هذا الرقم غير مسجل',
+    reset_sent: '✅ تم إرسال طلب استعادة كلمة السر',
+    booking_error: 'هذه السيارة غير متاحة للحجز',
+    booking_dates: 'اختر التواريخ',
+    booking_invalid: 'تاريخ النهاية بعد البداية',
+    booking_conflict: 'هذه السيارة محجوزة في الفترة المحددة',
+    booking_success: '✅ تم إرسال طلب الحجز!',
+    cancel_success: 'تم إلغاء الحجز',
+    cannot_cancel: 'لا يمكن الإلغاء',
+    
+    // فلتر
+    all: '📋 الكل',
+    filter_available: '✅ متاحة',
+    filter_rented: '🔴 مؤجَّرة',
+    filter_maintenance: '🔧 صيانة',
+    
+    // حقوق
+    copyright: '© 2024 Adam Locations · جميع الحقوق محفوظة'
+  },
+  
+  fr: {
+    // Général
+    app_name: 'Adam Locations',
+    app_sub: '🚗 De Voiture · Location de Véhicules',
+    slogan: '"L\'élégance de la route"',
+    loading: 'Chargement en cours...',
+    offline: '⚠️ Mode hors ligne',
+    synced: '✅ Synchronisé',
+    
+    // Connexion
+    login_title: '🔐 Accéder à votre compte',
+    login_sub: 'Connectez-vous pour réserver votre véhicule',
+    phone: '📱 Numéro de téléphone',
+    password: '🔑 Mot de passe',
+    login_btn: '🚀 Se connecter',
+    register_btn: '📝 S\'inscrire',
+    forgot_btn: '🔑 Mot de passe oublié ?',
+    phone_placeholder: '05xxxxxxxx',
+    password_placeholder: '••••••',
+    
+    // Inscription
+    register_title: '📝 Créer un compte',
+    full_name: 'Nom complet',
+    confirm_password: '✅ Confirmer le mot de passe',
+    register_submit: '✅ S\'inscrire',
+    
+    // Récupération
+    forgot_title: '🔑 Mot de passe oublié',
+    forgot_sub: 'Une demande sera envoyée à l\'administration',
+    forgot_submit: '📤 Envoyer',
+    
+    // Application
+    vehicles: '🚗 Véhicules',
+    reservations: '📅 Mes réservations',
+    profile: '👤 Mon profil',
+    logout: '🚪 Déconnexion',
+    welcome: '👋 Bienvenue',
+    no_vehicles: 'Aucun véhicule disponible',
+    contact: '📱 Contact',
+    
+    // Carte véhicule
+    year: '📅 Année',
+    color: '🎨 Couleur',
+    km: '📟 Kilométrage',
+    status: '📋 État',
+    available: '✅ Disponible',
+    rented: '🔴 Loué',
+    maintenance: '🔧 Maintenance',
+    details: '📋 Détails',
+    book: '📅 Réserver',
+    price_day: '€ / jour',
+    vip_required: '⭐ Compte VIP requis pour réserver',
+    contact_admin: 'Contactez l\'administration',
+    pending: '⏳ En attente',
+    unavailable: '🚫 Indisponible',
+    
+    // Détails
+    last_oil: '🔧 Dernière révision',
+    plate: '📋 Plaque',
+    close: '🔙 Fermer',
+    reserve_now: '📅 Réserver maintenant',
+    
+    // Réservations
+    my_reservations: '📅 Mes réservations',
+    no_reservations: 'Aucune réservation',
+    browse: '🚗 Parcourir',
+    days: 'jour',
+    days_plural: 'jours',
+    pending_status: '⏳ En attente',
+    confirmed_status: '✅ Confirmé',
+    completed_status: '📌 Terminé',
+    cancelled_status: '❌ Annulé',
+    cancel: '❌ Annuler',
+    confirm_cancel: 'Confirmer l\'annulation ?',
+    
+    // Profil
+    vip_account: '⭐ Compte VIP',
+    standard_account: '👤 Compte Standard',
+    vip_desc: '🔓 Accès complet · Réservation disponible',
+    standard_desc: '🔒 Réservation non disponible · Contactez l\'administration',
+    reservations_count: '📅 Réservations',
+    joined: '📆 Inscrit le',
+    logout_btn: '🚪 Déconnexion',
+    
+    // Notifications
+    fill_fields: 'Veuillez remplir tous les champs',
+    invalid_credentials: 'Numéro ou mot de passe incorrect',
+    account_blocked: '❌ Compte bloqué, contactez l\'administration',
+    login_success: '👋 Bienvenue',
+    logout_success: '🔓 Déconnexion réussie',
+    min_password: '4 caractères minimum',
+    password_mismatch: 'Les mots de passe ne correspondent pas',
+    phone_exists: 'Ce numéro est déjà enregistré',
+    register_success: '✅ Bienvenue',
+    phone_required: 'Entrez votre numéro',
+    phone_not_found: 'Numéro non enregistré',
+    reset_sent: '✅ Demande envoyée à l\'administration',
+    booking_error: 'Ce véhicule n\'est pas disponible',
+    booking_dates: 'Choisissez les dates',
+    booking_invalid: 'La date de fin doit être après la date de début',
+    booking_conflict: 'Ce véhicule est déjà réservé',
+    booking_success: '✅ Demande de réservation envoyée !',
+    cancel_success: 'Réservation annulée',
+    cannot_cancel: 'Annulation impossible',
+    
+    // Filtres
+    all: '📋 Tous',
+    filter_available: '✅ Disponible',
+    filter_rented: '🔴 Loué',
+    filter_maintenance: '🔧 Maintenance',
+    
+    // Copyright
+    copyright: '© 2024 Adam Locations · Tous droits réservés'
+  }
+};
+
+/* ============================================================
+   📦 الأدوات المساعدة
+   ============================================================ */
+const todayStr = () => new Date().toISOString().slice(0, 10);
+const nowStr = () => new Date().toISOString().slice(0, 10) + ' ' + new Date().toTimeString().slice(0, 5);
+const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+const addDays = (dateStr, n) => { const d = new Date(dateStr); d.setDate(d.getDate() + n); return d.toISOString().slice(0, 10); };
+const daysBetween = (a, b) => Math.round((new Date(b) - new Date(a)) / 86400000);
+const fmtMoney = (n) => `${Number(n || 0).toLocaleString("en-US")} د.ج`;
+const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+
+// ====== إدارة اللغة ======
+let currentLang = localStorage.getItem('app_lang') || 'ar';
+
+function t(key) {
+  return LANG[currentLang][key] || key;
+}
+
+function switchLang(lang) {
+  currentLang = lang;
+  localStorage.setItem('app_lang', lang);
+  // تحديث اتجاه الصفحة
+  document.documentElement.dir = lang === 'ar' ? 'rtl' : 'ltr';
+  document.documentElement.lang = lang;
+  render();
+  showToast(lang === 'ar' ? '🌍 تم التبديل إلى العربية' : '🌍 Basculé vers le français', 'info');
+}
+
+function showToast(msg, type = "success") {
+  const el = document.getElementById("toast");
+  if (!el) return;
+  el.textContent = msg;
+  el.className = `toast show ${type}`;
+  clearTimeout(window._toastTimer);
+  window._toastTimer = setTimeout(() => { el.className = "toast"; }, 3500);
+}
+
+/* ============================================================
+   🗄️ البيانات الافتراضية
+   ============================================================ */
+function getDefaultData() {
+  const t = todayStr();
+  return {
+    cars: [
+      { 
+        id: "c1", plate: "أ ب ج 1234", brand: "Mercedes", model: "G-Class", 
+        year: 2024, color: "أسود / Noir", image: "🏎️", 
+        status: "available", currentKm: 2500, dailyPrice: 35000,
+        oilIntervalKm: 5000, lastOilKm: 1500,
+        insuranceExpiry: addDays(t, 300), inspectionExpiry: addDays(t, 300),
+        description: "🏆 سيارة فاخرة من الفئة G-Class / Véhicule de luxe G-Class"
+      },
+      { 
+        id: "c2", plate: "د هـ و 5678", brand: "Toyota", model: "Land Cruiser", 
+        year: 2023, color: "أبيض / Blanc", image: "🚙", 
+        status: "available", currentKm: 12000, dailyPrice: 25000,
+        oilIntervalKm: 5000, lastOilKm: 10000,
+        insuranceExpiry: addDays(t, 180), inspectionExpiry: addDays(t, 200),
+        description: "🚙 دفع رباعي قوي / 4x4 puissant"
+      },
+      { 
+        id: "c3", plate: "ز ح ط 9012", brand: "BMW", model: "X5", 
+        year: 2024, color: "أزرق / Bleu", image: "🚗", 
+        status: "rented", currentKm: 8000, dailyPrice: 28000,
+        oilIntervalKm: 5000, lastOilKm: 6000,
+        insuranceExpiry: addDays(t, 250), inspectionExpiry: addDays(t, 280),
+        description: "💎 SUV فاخر / SUV de luxe"
+      },
+      { 
+        id: "c4", plate: "ك ل م 3456", brand: "Audi", model: "Q7", 
+        year: 2023, color: "فضي / Argenté", image: "🚘", 
+        status: "available", currentKm: 15000, dailyPrice: 22000,
+        oilIntervalKm: 5000, lastOilKm: 12000,
+        insuranceExpiry: addDays(t, 150), inspectionExpiry: addDays(t, 180),
+        description: "🌟 عائلية فسيحة / Familial spacieux"
+      },
+      { 
+        id: "c5", plate: "س ص ع 7890", brand: "Range Rover", model: "Sport", 
+        year: 2024, color: "أسود / Noir", image: "🏎️", 
+        status: "maintenance", currentKm: 5000, dailyPrice: 32000,
+        oilIntervalKm: 5000, lastOilKm: 3000,
+        insuranceExpiry: addDays(t, 200), inspectionExpiry: addDays(t, 220),
+        description: "🔧 رياضية فاخرة - قيد الصيانة / Sport de luxe - en maintenance"
+      }
+    ],
+    customers: [],
+    reservations: [],
+    kmHistory: [],
+    finances: [],
+    contact: { phone: "0555555555", platformLink: "https://wa.me/213555555555", platformLabel: "WhatsApp" },
+    passwordResetRequests: [],
+    settings: { 
+      companyName: "Adam Locations",
+      maintenanceAlertKm: 500,
+      insuranceAlertDays: 30
+    }
+  };
+}
+
+/* ============================================================
+   💾 قاعدة البيانات
+   ============================================================ */
+let db;
+let dbRef = null;
+let firebaseReady = false;
+let appStarted = false;
+
+try {
+  const saved = localStorage.getItem(STORAGE_KEY);
+  db = saved ? JSON.parse(saved) : getDefaultData();
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(db));
+} catch (e) {
+  db = getDefaultData();
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(db));
+}
+
+function saveLocal() {
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(db)); } catch (e) {}
+}
+
+function saveData() {
+  saveLocal();
+  if (dbRef && firebaseReady) {
+    dbRef.set(db).catch(() => {});
+  }
+}
+
+/* ============================================================
+   🔥 تهيئة Firebase
+   ============================================================ */
+function initFirebase() {
+  const statusEl = document.getElementById('splash-status');
+  
+  try {
+    if (typeof firebase === 'undefined') {
+      throw new Error('Firebase غير محمل');
+    }
+    
+    firebase.initializeApp(firebaseConfig);
+    dbRef = firebase.database().ref(STORAGE_KEY);
+    firebaseReady = true;
+    
+    if (statusEl) statusEl.textContent = t('synced');
+    startSync();
+    
+  } catch (e) {
+    console.warn('فشل تهيئة Firebase:', e.message);
+    if (statusEl) statusEl.textContent = t('offline');
+    setTimeout(() => {
+      if (!appStarted) {
+        appStarted = true;
+        hideSplash();
+        render();
+        showToast(t('offline'), 'warning');
+      }
+    }, 3000);
+  }
+}
+
+/* ============================================================
+   🔄 المزامنة مع Firebase
+   ============================================================ */
+let firstSync = true;
+
+function startSync() {
+  if (!dbRef) return;
+  
+  dbRef.on('value', (snapshot) => {
+    const remote = snapshot.val();
+    if (remote) {
+      db = remote;
+      saveLocal();
+      if (firstSync) {
+        firstSync = false;
+        if (!appStarted) {
+          appStarted = true;
+          hideSplash();
+          render();
+          showToast(t('synced'), 'success');
+        }
+      } else {
+        render();
+      }
+    } else if (firstSync) {
+      dbRef.set(db).then(() => {
+        console.log('✅ تم إرسال البيانات الأولية');
+        firstSync = false;
+        if (!appStarted) {
+          appStarted = true;
+          hideSplash();
+          render();
+          showToast(t('synced'), 'success');
+        }
+      }).catch(() => {
+        firstSync = false;
+        if (!appStarted) {
+          appStarted = true;
+          hideSplash();
+          render();
+          showToast(t('offline'), 'warning');
+        }
+      });
+    }
+  }, () => {
+    if (firstSync && !appStarted) {
+      firstSync = false;
+      setTimeout(() => {
+        if (!appStarted) {
+          appStarted = true;
+          hideSplash();
+          render();
+          showToast(t('offline'), 'warning');
+        }
+      }, 3000);
+    }
+  });
+}
+
+function hideSplash() {
+  const el = document.getElementById('splash');
+  if (el) {
+    el.classList.add('hidden');
+    setTimeout(() => { el.style.display = 'none'; }, 500);
+  }
+}
+
+/* ============================================================
+   📱 حالة التطبيق
+   ============================================================ */
+let state = {
+  customer: null,
+  tab: 'cars',
+  modal: null,
+  selectedCar: null,
+  startDate: todayStr(),
+  endDate: addDays(todayStr(), 1),
+  filter: 'all'
+};
+
+/* ============================================================
+   🖥️ التصيير
+   ============================================================ */
+function render() {
+  const app = document.getElementById('app');
+  if (!app) return;
+  if (!state.customer) {
+    app.innerHTML = renderLogin();
+  } else {
+    app.innerHTML = renderApp();
+  }
+  if (state.modal) {
+    app.innerHTML += renderModal();
+  }
+}
+
+/* ============================================================
+   🔐 شاشة الدخول
+   ============================================================ */
+function renderLogin() {
+  return `
+    <div class="login-wrapper">
+      <div class="hero-car">🏎️</div>
+      <div class="brand-main">${t('app_name')}</div>
+      <div class="brand-sub">✦ ${t('app_sub')} ✦</div>
+      <div class="brand-slogan">${t('slogan')}</div>
+      
+      <div class="login-card">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+          <div>
+            <div style="font-size:14px;font-weight:700;color:#F2B134;">${t('login_title')}</div>
+            <div style="font-size:11px;color:#5B657A;">${t('login_sub')}</div>
+          </div>
+          <div class="lang-switch">
+            <button class="${currentLang === 'ar' ? 'active' : ''}" onclick="switchLang('ar')">🇸🇦 ع</button>
+            <button class="${currentLang === 'fr' ? 'active' : ''}" onclick="switchLang('fr')">🇫🇷 F</button>
+          </div>
+        </div>
+        
+        <div class="input-group">
+          <label>${t('phone')}</label>
+          <div class="input-icon">
+            <span class="icon">📞</span>
+            <input id="login-phone" class="input" placeholder="${t('phone_placeholder')}" />
+          </div>
+        </div>
+        
+        <div class="input-group">
+          <label>${t('password')}</label>
+          <div class="input-icon">
+            <span class="icon">🔒</span>
+            <input id="login-password" class="input" type="password" placeholder="${t('password_placeholder')}" />
+          </div>
+        </div>
+        
+        <button class="btn btn-primary" onclick="customerLogin()" style="margin-bottom:12px;">
+          ${t('login_btn')}
+        </button>
+        
+        <div class="flex-center" style="justify-content:center;gap:16px;flex-wrap:wrap;">
+          <button class="btn btn-subtle" onclick="openRegister()" style="width:auto;padding:8px 20px;font-size:13px;">
+            ${t('register_btn')}
+          </button>
+          <button style="background:none;border:none;color:#5B657A;cursor:pointer;font-size:12px;" onclick="openForgotPassword()">
+            ${t('forgot_btn')}
+          </button>
+        </div>
+      </div>
+      
+      <div style="margin-top:16px;font-size:10px;color:#3F485A;text-align:center;letter-spacing:0.5px;">
+        ${t('copyright')}
+      </div>
+    </div>
+  `;
+}
+
+/* ============================================================
+   📱 التطبيق الرئيسي
+   ============================================================ */
+function renderApp() {
+  const isPremium = state.customer.whitelisted === true;
+  
+  return `
+    <div class="container">
+      <div class="header">
+        <div class="header-brand">
+          <span class="logo-icon">🏎️</span>
+          <div>
+            <div class="brand-text">${t('app_name')}</div>
+            <div class="brand-sub">✦ ${t('app_sub')} ✦</div>
+          </div>
+        </div>
+        <div class="header-user">
+          <div class="lang-switch" style="margin-left:8px;">
+            <button class="${currentLang === 'ar' ? 'active' : ''}" onclick="switchLang('ar')" style="font-size:10px;padding:2px 6px;">ع</button>
+            <button class="${currentLang === 'fr' ? 'active' : ''}" onclick="switchLang('fr')" style="font-size:10px;padding:2px 6px;">F</button>
+          </div>
+          ${isPremium ? '<span class="premium-badge">⭐ VIP</span>' : ''}
+          👤 ${esc(state.customer.name)}
+          <button onclick="customerLogout()" style="background:none;border:none;color:#E5573F;cursor:pointer;font-size:12px;">🚪</button>
+        </div>
+      </div>
+      
+      <div class="tabbar">
+        <button class="${state.tab === 'cars' ? 'active' : ''}" onclick="setTab('cars')">${t('vehicles')}</button>
+        <button class="${state.tab === 'reservations' ? 'active' : ''}" onclick="setTab('reservations')">${t('reservations')}</button>
+        <button class="${state.tab === 'profile' ? 'active' : ''}" onclick="setTab('profile')">${t('profile')}</button>
+      </div>
+      
+      ${state.tab === 'cars' ? renderCars(isPremium) : ''}
+      ${state.tab === 'reservations' ? renderReservations() : ''}
+      ${state.tab === 'profile' ? renderProfile() : ''}
+    </div>
+  `;
+}
+
+/* ============================================================
+   🚗 عرض السيارات
+   ============================================================ */
+function renderCars(isPremium) {
+  let filteredCars = [...db.cars];
+  
+  if (!isPremium) {
+    filteredCars = filteredCars.filter(c => c.status === 'available');
+  } else {
+    if (state.filter === 'available') {
+      filteredCars = filteredCars.filter(c => c.status === 'available');
+    } else if (state.filter === 'rented') {
+      filteredCars = filteredCars.filter(c => c.status === 'rented');
+    } else if (state.filter === 'maintenance') {
+      filteredCars = filteredCars.filter(c => c.status === 'maintenance');
+    }
+  }
+  
+  const totalCars = db.cars.length;
+  const availableCars = db.cars.filter(c => c.status === 'available').length;
+  
+  const statusLabels = {
+    available: t('available'),
+    rented: t('rented'),
+    maintenance: t('maintenance')
+  };
+  
+  return `
+    <div class="flex-between mb-8">
+      <div style="font-weight:700;font-size:16px;">${t('vehicles')}</div>
+      <div class="flex-center" style="gap:4px;">
+        <span class="badge badge-success">${availableCars} ${t('available')}</span>
+        ${isPremium ? `<span class="badge badge-info">${totalCars} total</span>` : ''}
+      </div>
+    </div>
+    
+    ${!isPremium ? `
+      <div class="card" style="background:#F2B13408;border-color:#F2B13433;padding:8px 12px;margin-bottom:12px;border-radius:10px;">
+        <div class="flex-center" style="font-size:12px;color:#8B93A1;">
+          <span>💡</span>
+          <span>${t('vip_required')}</span>
+          <span class="premium-badge" style="margin-right:auto;">⭐ VIP</span>
+        </div>
+      </div>
+    ` : `
+      <div class="filter-bar">
+        <button class="${state.filter === 'all' ? 'active' : ''}" onclick="setFilter('all')">${t('all')}</button>
+        <button class="${state.filter === 'available' ? 'active' : ''}" onclick="setFilter('available')">${t('filter_available')}</button>
+        <button class="${state.filter === 'rented' ? 'active' : ''}" onclick="setFilter('rented')">${t('filter_rented')}</button>
+        <button class="${state.filter === 'maintenance' ? 'active' : ''}" onclick="setFilter('maintenance')">${t('filter_maintenance')}</button>
+      </div>
+    `}
+    
+    ${filteredCars.length === 0 ? `
+      <div class="empty">
+        <div class="icon">😔</div>
+        <div>${t('no_vehicles')}</div>
+        ${!isPremium ? `<div style="font-size:12px;color:#5B657A;margin-top:4px;">${t('contact_admin')}</div>` : ''}
+      </div>
+    ` : filteredCars.map(car => renderCarCard(car, isPremium, statusLabels)).join('')}
+    
+    <div class="text-center mt-16" style="font-size:10px;color:#3F485A;letter-spacing:0.5px;">
+      ${t('contact')}: <a href="${db.contact?.platformLink || '#'}" target="_blank" style="color:#F2B134;text-decoration:none;">${db.contact?.platformLabel || 'WhatsApp'}</a>
+      &nbsp;·&nbsp; 📞 ${db.contact?.phone || '0555555555'}
+    </div>
+  `;
+}
+
+/* ============================================================
+   🎴 بطاقة السيارة
+   ============================================================ */
+function renderCarCard(car, isPremium, statusLabels) {
+  const isAvailable = car.status === 'available';
+  const statusMap = {
+    available: { label: statusLabels.available || '✅ Disponible', cls: 'available' },
+    rented: { label: statusLabels.rented || '🔴 Loué', cls: 'rented' },
+    maintenance: { label: statusLabels.maintenance || '🔧 Maintenance', cls: 'maintenance' }
+  };
+  const st = statusMap[car.status] || statusMap.available;
+  
+  const hasPendingReservation = db.reservations.some(r => 
+    r.carId === car.id && 
+    r.customerId === state.customer.id && 
+    r.status === 'pending'
+  );
+  
+  const canBook = isPremium && isAvailable && !hasPendingReservation;
+  
+  return `
+    <div class="car-card">
+      ${isPremium ? `<div class="status-badge ${st.cls}">${st.label}</div>` : ''}
+      
+      <div class="image-placeholder">
+        <span class="car-emoji">${car.image || '🚗'}</span>
+      </div>
+      
+      <div class="flex-between">
+        <div>
+          <div class="name">${esc(car.brand)} ${esc(car.model)}</div>
+          <div class="info">${esc(car.plate)}</div>
+        </div>
+        <div class="price">${fmtMoney(car.dailyPrice)}</div>
+      </div>
+      
+      <div class="details-grid">
+        <div><span class="label">${t('year')}</span> <span class="value">${car.year}</span></div>
+        <div><span class="label">${t('color')}</span> <span class="value">${esc(car.color || '—')}</span></div>
+        <div><span class="label">${t('km')}</span> <span class="value">${car.currentKm.toLocaleString()} km</span></div>
+        <div><span class="label">${t('status')}</span> <span class="value">${isAvailable ? t('available') : car.status === 'rented' ? t('rented') : t('maintenance')}</span></div>
+      </div>
+      
+      ${car.description ? `<div class="info" style="font-size:12px;margin-top:4px;">${esc(car.description)}</div>` : ''}
+      
+      <div class="flex-between" style="margin-top:10px;">
+        <button class="btn btn-sm btn-subtle" onclick="viewCarDetails('${car.id}')">${t('details')}</button>
+        ${!isPremium ? `
+          <button class="btn btn-sm btn-subtle" style="opacity:0.5;cursor:not-allowed;" disabled>
+            🔒 ${t('book')}
+          </button>
+        ` : isAvailable ? `
+          ${hasPendingReservation ? `
+            <button class="btn btn-sm" style="background:#F2B13422;color:#F2B134;border:1px solid #F2B13444;" disabled>${t('pending')}</button>
+          ` : `
+            <button class="btn btn-sm btn-primary" onclick="openBooking('${car.id}')">${t('book')}</button>
+          `}
+        ` : `
+          <button class="btn btn-sm btn-subtle" style="opacity:0.4;cursor:not-allowed;" disabled>${t('unavailable')}</button>
+        `}
+      </div>
+      
+      ${!isPremium ? `
+        <div style="margin-top:8px;font-size:10px;color:#3F485A;text-align:center;border-top:1px solid #1F2633;padding-top:8px;">
+          ⭐ ${t('vip_required')} · ${t('contact_admin')}
+        </div>
+      ` : ''}
+    </div>
+  `;
+}
+
+/* ============================================================
+   📋 تفاصيل السيارة
+   ============================================================ */
+function viewCarDetails(carId) {
+  state.modal = { type: 'carDetails', carId };
+  render();
+}
+
+/* ============================================================
+   📅 حجوزاتي
+   ============================================================ */
+function renderReservations() {
+  const myRes = db.reservations.filter(r => r.customerId === state.customer.id);
+  const sorted = [...myRes].sort((a, b) => a.createdAt < b.createdAt ? 1 : -1);
+  
+  const statusMap = {
+    pending: { label: t('pending_status'), cls: 'badge-warning' },
+    confirmed: { label: t('confirmed_status'), cls: 'badge-success' },
+    completed: { label: t('completed_status'), cls: 'badge-info' },
+    cancelled: { label: t('cancelled_status'), cls: 'badge-danger' }
+  };
+  
+  return `
+    <div style="font-weight:700;margin-bottom:12px;font-size:16px;">${t('my_reservations')} (${myRes.length})</div>
+    
+    ${myRes.length === 0 ? `
+      <div class="empty">
+        <div class="icon">📭</div>
+        <div>${t('no_reservations')}</div>
+        <button class="btn btn-primary btn-sm" onclick="setTab('cars')" style="width:auto;margin-top:8px;">${t('browse')}</button>
+      </div>
+    ` : sorted.map(r => {
+      const car = db.cars.find(c => c.id === r.carId);
+      const st = statusMap[r.status] || statusMap.pending;
+      const days = daysBetween(r.startDate, r.endDate);
+      const dayLabel = days === 1 ? t('days') : t('days_plural');
+      return `
+        <div class="card">
+          <div class="flex-between">
+            <div>
+              <div style="font-weight:700;">${car ? esc(car.brand) + ' ' + esc(car.model) : 'Véhicule supprimé'}</div>
+              <div class="info">📅 ${r.startDate} → ${r.endDate} · ${days} ${dayLabel}</div>
+              ${r.exitTime ? `<div class="info" style="color:#5B8DEF;">🕒 Sortie: ${r.exitTime}</div>` : ''}
+              ${r.returnTime ? `<div class="info" style="color:#3FA796;">🔄 Retour: ${r.returnTime}</div>` : ''}
+            </div>
+            <div style="text-align:left;">
+              <span class="badge ${st.cls}" style="display:block;margin-bottom:4px;">${st.label}</span>
+              <div style="color:#F2B134;font-weight:700;font-size:15px;">${fmtMoney(r.totalPrice)}</div>
+            </div>
+          </div>
+          ${r.status === 'pending' ? `
+            <button class="btn btn-danger btn-sm" onclick="cancelReservation('${r.id}')" style="width:auto;margin-top:8px;">${t('cancel')}</button>
+          ` : ''}
+        </div>
+      `;
+    }).join('')}
+  `;
+}
+
+/* ============================================================
+   👤 حسابي
+   ============================================================ */
+function renderProfile() {
+  const c = state.customer;
+  const count = db.reservations.filter(r => r.customerId === c.id).length;
+  const isPremium = c.whitelisted === true;
+  
+  return `
+    <div class="card text-center">
+      <div style="font-size:56px;">${isPremium ? '⭐' : '👤'}</div>
+      <div style="font-size:20px;font-weight:700;">${esc(c.name)}</div>
+      <div style="color:#8B93A1;font-size:14px;">📱 ${esc(c.phone)}</div>
+      ${isPremium ? `
+        <span class="badge badge-premium" style="margin-top:8px;">${t('vip_account')}</span>
+        <div style="margin-top:6px;font-size:12px;color:#F2B134;">${t('vip_desc')}</div>
+      ` : `
+        <span class="badge badge-info" style="margin-top:8px;">${t('standard_account')}</span>
+        <div style="margin-top:6px;font-size:12px;color:#5B657A;">${t('standard_desc')}</div>
+      `}
+      <div style="margin-top:12px;color:#8B93A1;font-size:13px;">${t('reservations_count')}: ${count}</div>
+      <div style="color:#8B93A1;font-size:13px;">${t('joined')}: ${c.createdAt}</div>
+    </div>
+    <button class="btn btn-danger" onclick="customerLogout()">${t('logout_btn')}</button>
+  `;
+}
+
+/* ============================================================
+   🖼️ المودال
+   ============================================================ */
+function renderModal() {
+  const m = state.modal;
+  if (!m) return '';
+  
+  let title = '', content = '';
+  
+  if (m.type === 'register') {
+    title = t('register_title');
+    content = `
+      <div class="input-group"><label>${t('full_name')}</label><input id="reg-name" class="input" placeholder="Ahmed Mohamed" /></div>
+      <div class="input-group"><label>${t('phone')}</label><input id="reg-phone" class="input" placeholder="${t('phone_placeholder')}" /></div>
+      <div class="input-group"><label>${t('password')}</label><input id="reg-password" class="input" type="password" placeholder="${t('password_placeholder')}" /></div>
+      <div class="input-group"><label>${t('confirm_password')}</label><input id="reg-confirm" class="input" type="password" placeholder="${t('password_placeholder')}" /></div>
+      <button class="btn btn-primary" onclick="submitRegister()">${t('register_submit')}</button>
+    `;
+  }
+  
+  if (m.type === 'forgotPassword') {
+    title = t('forgot_title');
+    content = `
+      <div class="input-group"><label>${t('phone')}</label><input id="forgot-phone" class="input" placeholder="${t('phone_placeholder')}" /></div>
+      <div class="text-muted" style="font-size:12px;margin-bottom:12px;">${t('forgot_sub')}</div>
+      <button class="btn btn-primary" onclick="submitForgotPassword()">${t('forgot_submit')}</button>
+    `;
+  }
+  
+  if (m.type === 'carDetails') {
+    const car = db.cars.find(c => c.id === m.carId);
+    if (!car) return '';
+    const isPremium = state.customer.whitelisted === true;
+    const isAvailable = car.status === 'available';
+    const statusMap = {
+      available: { label: t('available'), cls: 'badge-success' },
+      rented: { label: t('rented'), cls: 'badge-danger' },
+      maintenance: { label: t('maintenance'), cls: 'badge-warning' }
+    };
+    const st = statusMap[car.status] || statusMap.available;
+    
+    title = `📋 ${esc(car.brand)} ${esc(car.model)}`;
+    content = `
+      <div class="car-detail-image">${car.image || '🚗'}</div>
+      
+      <div class="flex-between">
+        <div><strong style="font-size:18px;">${esc(car.brand)} ${esc(car.model)}</strong></div>
+        <span class="badge ${st.cls}">${st.label}</span>
+      </div>
+      
+      <div class="details-grid" style="grid-template-columns:1fr 1fr;margin:12px 0;">
+        <div><span class="label">${t('year')}</span><br><span>${car.year}</span></div>
+        <div><span class="label">${t('color')}</span><br><span>${esc(car.color || '—')}</span></div>
+        <div><span class="label">${t('km')}</span><br><span>${car.currentKm.toLocaleString()} km</span></div>
+        <div><span class="label">💰 Prix/Jour</span><br><span style="color:#F2B134;font-weight:700;">${fmtMoney(car.dailyPrice)}</span></div>
+        <div><span class="label">${t('last_oil')}</span><br><span>${car.lastOilKm.toLocaleString()} km</span></div>
+        <div><span class="label">${t('plate')}</span><br><span>${esc(car.plate)}</span></div>
+      </div>
+      
+      ${car.description ? `<div style="background:#1A212E;border-radius:8px;padding:10px 14px;font-size:13px;color:#8B93A1;margin-bottom:12px;">${esc(car.description)}</div>` : ''}
+      
+      ${!isPremium ? `
+        <div style="background:#F2B13408;border:1px solid #F2B13433;border-radius:8px;padding:10px 14px;font-size:12px;color:#5B657A;text-align:center;margin-bottom:12px;">
+          ⭐ ${t('vip_required')} · ${t('contact_admin')}
+        </div>
+      ` : ''}
+      
+      <div class="flex-between">
+        <button class="btn btn-sm btn-subtle" onclick="closeModal()">${t('close')}</button>
+        ${isPremium && isAvailable ? `
+          <button class="btn btn-sm btn-primary" onclick="closeModal();openBooking('${car.id}')">${t('reserve_now')}</button>
+        ` : isPremium && !isAvailable ? `
+          <span class="text-muted" style="font-size:13px;">${t('unavailable')}</span>
+        ` : ''}
+      </div>
+    `;
+  }
+  
+  if (m.type === 'booking') {
+    const car = state.selectedCar;
+    if (!car) return '';
+    const days = daysBetween(state.startDate, state.endDate);
+    const total = days * car.dailyPrice;
+    const dayLabel = days === 1 ? t('days') : t('days_plural');
+    
+    title = `📅 Réserver ${esc(car.brand)} ${esc(car.model)}`;
+    content = `
+      <div style="margin-bottom:12px;">
+        <div class="text-muted">${esc(car.brand)} ${esc(car.model)} · ${car.year}</div>
+        <div style="font-weight:700;color:#F2B134;font-size:20px;">${fmtMoney(car.dailyPrice)} / ${t('days')}</div>
+        <div class="text-muted" style="font-size:12px;">${esc(car.color || '')} · ${esc(car.plate)}</div>
+      </div>
+      
+      <div class="input-group"><label>📅 Date de début</label><input id="book-start" class="input" type="date" value="${state.startDate}" onchange="updateBookingTotal()" /></div>
+      <div class="input-group"><label>📅 Date de fin</label><input id="book-end" class="input" type="date" value="${state.endDate}" onchange="updateBookingTotal()" /></div>
+      
+      <div id="booking-total" style="background:#1A212E;border-radius:10px;padding:14px;text-align:center;margin-bottom:12px;">
+        <div class="text-muted" style="font-size:12px;">💰 Total</div>
+        <div style="font-size:22px;font-weight:700;color:#F2B134;">${fmtMoney(total)}</div>
+        <div style="font-size:12px;color:#5B657A;">${days} ${dayLabel} × ${fmtMoney(car.dailyPrice)}</div>
+      </div>
+      
+      <button class="btn btn-success" onclick="submitBooking()">✅ Confirmer la réservation</button>
+    `;
+  }
+  
+  return `
+    <div class="modal-overlay" onclick="if(event.target===this)closeModal()">
+      <div class="modal-box">
+        <div class="modal-header">
+          <h3>${title}</h3>
+          <button class="modal-close" onclick="closeModal()">✕</button>
+        </div>
+        ${content}
+      </div>
+    </div>
+  `;
+}
+
+/* ============================================================
+   🎯 دوال الزبون
+   ============================================================ */
+function customerLogin() {
+  const phone = document.getElementById('login-phone').value.trim();
+  const password = document.getElementById('login-password').value.trim();
+  if (!phone || !password) return showToast(t('fill_fields'), 'error');
+  
+  const customer = db.customers.find(c => c.phone === phone && c.password === password);
+  if (!customer) return showToast(t('invalid_credentials'), 'error');
+  if (customer.blacklisted) return showToast(t('account_blocked'), 'error');
+  
+  state.customer = customer;
+  state.tab = 'cars';
+  render();
+  showToast(`${t('login_success')} ${customer.name}`, 'success');
+}
+
+function customerLogout() {
+  state.customer = null;
+  state.tab = 'cars';
+  render();
+  showToast(t('logout_success'), 'info');
+}
+
+function openRegister() {
+  state.modal = { type: 'register' };
+  render();
+}
+
+function submitRegister() {
+  const name = document.getElementById('reg-name').value.trim();
+  const phone = document.getElementById('reg-phone').value.trim();
+  const password = document.getElementById('reg-password').value.trim();
+  const confirm = document.getElementById('reg-confirm').value.trim();
+  
+  if (!name || !phone || !password) return showToast(t('fill_fields'), 'error');
+  if (password.length < 4) return showToast(t('min_password'), 'error');
+  if (password !== confirm) return showToast(t('password_mismatch'), 'error');
+  if (db.customers.find(c => c.phone === phone)) return showToast(t('phone_exists'), 'error');
+  
+  const newCustomer = { 
+    id: uid(), 
+    name, 
+    phone, 
+    password, 
+    whitelisted: false, 
+    blacklisted: false, 
+    createdAt: todayStr() 
+  };
+  
+  db.customers.push(newCustomer);
+  saveData();
+  state.customer = newCustomer;
+  state.modal = null;
+  state.tab = 'cars';
+  render();
+  showToast(`${t('register_success')} ${name}`, 'success');
+}
+
+function openForgotPassword() {
+  state.modal = { type: 'forgotPassword' };
+  render();
+}
+
+function submitForgotPassword() {
+  const phone = document.getElementById('forgot-phone').value.trim();
+  if (!phone) return showToast(t('phone_required'), 'error');
+  const customer = db.customers.find(c => c.phone === phone);
+  if (!customer) return showToast(t('phone_not_found'), 'error');
+  
+  if (!db.passwordResetRequests) db.passwordResetRequests = [];
+  db.passwordResetRequests.push({ 
+    id: uid(), 
+    customerId: customer.id, 
+    name: customer.name, 
+    phone: customer.phone, 
+    requestedAt: todayStr(), 
+    status: 'pending' 
+  });
+  saveData();
+  state.modal = null;
+  render();
+  showToast(t('reset_sent'), 'success');
+}
+
+function openBooking(carId) {
+  const isPremium = state.customer.whitelisted === true;
+  if (!isPremium) {
+    return showToast(t('vip_required'), 'error');
+  }
+  
+  state.selectedCar = db.cars.find(c => c.id === carId);
+  if (!state.selectedCar) return;
+  if (state.selectedCar.status !== 'available') {
+    return showToast(t('booking_error'), 'error');
+  }
+  state.startDate = todayStr();
+  state.endDate = addDays(todayStr(), 1);
+  state.modal = { type: 'booking' };
+  render();
+}
+
+function updateBookingTotal() {
+  const start = document.getElementById('book-start').value;
+  const end = document.getElementById('book-end').value;
+  if (!start || !end || !state.selectedCar) return;
+  
+  const days = daysBetween(start, end);
+  if (days < 1) {
+    document.getElementById('booking-total').innerHTML = `
+      <div style="color:#E5573F;font-size:13px;">⚠️ ${t('booking_invalid')}</div>
+    `;
+    return;
+  }
+  
+  const total = days * state.selectedCar.dailyPrice;
+  const el = document.getElementById('booking-total');
+  if (el) {
+    const dayLabel = days === 1 ? t('days') : t('days_plural');
+    el.innerHTML = `
+      <div class="text-muted" style="font-size:12px;">💰 Total</div>
+      <div style="font-size:22px;font-weight:700;color:#F2B134;">${fmtMoney(total)}</div>
+      <div style="font-size:12px;color:#5B657A;">${days} ${dayLabel} × ${fmtMoney(state.selectedCar.dailyPrice)}</div>
+    `;
+  }
+}
+
+function submitBooking() {
+  const car = state.selectedCar;
+  const startDate = document.getElementById('book-start').value;
+  const endDate = document.getElementById('book-end').value;
+  
+  if (!startDate || !endDate) return showToast(t('booking_dates'), 'error');
+  if (daysBetween(startDate, endDate) < 1) return showToast(t('booking_invalid'), 'error');
+  
+  const overlapping = db.reservations.some(r => 
+    r.carId === car.id && 
+    r.status !== 'cancelled' && 
+    r.status !== 'completed' &&
+    ((startDate >= r.startDate && startDate < r.endDate) || 
+     (endDate > r.startDate && endDate <= r.endDate) ||
+     (startDate <= r.startDate && endDate >= r.endDate))
+  );
+  
+  if (overlapping) return showToast(t('booking_conflict'), 'error');
+  
+  const days = daysBetween(startDate, endDate);
+  const totalPrice = days * car.dailyPrice;
+  
+  db.reservations.push({
+    id: uid(),
+    carId: car.id,
+    customerId: state.customer.id,
+    customerName: state.customer.name,
+    customerPhone: state.customer.phone,
+    startDate,
+    endDate,
+    status: 'pending',
+    totalPrice,
+    createdAt: todayStr()
+  });
+  
+  saveData();
+  state.modal = null;
+  render();
+  showToast(t('booking_success'), 'success');
+}
+
+function cancelReservation(resId) {
+  if (!confirm(t('confirm_cancel'))) return;
+  const r = db.reservations.find(r => r.id === resId);
+  if (!r || r.status !== 'pending') return showToast(t('cannot_cancel'), 'error');
+  
+  r.status = 'cancelled';
+  saveData();
+  render();
+  showToast(t('cancel_success'), 'info');
+}
+
+function setTab(tab) {
+  state.tab = tab;
+  render();
+}
+
+function setFilter(filter) {
+  state.filter = filter;
+  render();
+}
+
+function closeModal() {
+  state.modal = null;
+  render();
+}
+
+/* ============================================================
+   🚀 بدء التطبيق
+   ============================================================ */
+// تعيين اللغة الافتراضية
+document.documentElement.dir = currentLang === 'ar' ? 'rtl' : 'ltr';
+document.documentElement.lang = currentLang;
+
+// تحديث نص شاشة التحميل
+document.getElementById('splash-sub').textContent = t('app_sub');
+document.getElementById('splash-status').textContent = t('loading');
+
+setTimeout(() => {
+  if (typeof firebase !== 'undefined') {
+    initFirebase();
+  } else {
+    setTimeout(() => {
+      if (!appStarted) {
+        appStarted = true;
+        hideSplash();
+        render();
+        showToast(t('offline'), 'warning');
+      }
+    }, 3000);
+  }
+}, 800);
+
+console.log('🏎️ Adam Locations - Application Client v4.0 (Bilingue)');
+console.log('📊 Véhicules:', db.cars.length);
+console.log('👥 Clients:', db.customers.length);
+console.log('🌍 Langue:', currentLang);
+</script>
+</body>
+</html>
