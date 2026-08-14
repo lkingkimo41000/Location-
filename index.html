@@ -1,0 +1,599 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1" />
+<title>Adam Location · حجز السيارات</title>
+<meta name="theme-color" content="#0F1216" />
+<link rel="manifest" href="manifest.json" />
+<link rel="icon" href="icon-192.png" />
+<link rel="apple-touch-icon" href="icon-192.png" />
+<style>
+  :root{
+    --bg:#0F1216; --surface:#1A1E25; --surface2:#232833; --surface3:#2C323F;
+    --border:#323847; --amber:#F2B134; --amber-ink:#1A1305; --text:#F1EEE6;
+    --muted:#8B93A1; --success:#3FA796; --danger:#E5573F; --info:#5B8DEF;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--text);font-family:'Tajawal',-apple-system,'Segoe UI',Tahoma,sans-serif;}
+  .wrap{max-width:480px;margin:0 auto;padding:16px 16px 40px;}
+  .card{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:16px;margin-bottom:12px;}
+  .btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;border-radius:10px;padding:10px 16px;font-size:14px;font-weight:800;cursor:pointer;border:1px solid transparent;width:100%;}
+  .btn-primary{background:var(--amber);color:var(--amber-ink);}
+  .btn-success{background:var(--success);color:#fff;}
+  .btn-danger{background:var(--danger);color:#fff;}
+  .btn:active{transform:scale(0.96);}
+  .input{width:100%;background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:10px;padding:10px 12px;font-size:14px;outline:none;margin-bottom:12px;}
+  .input:focus{border-color:var(--amber);}
+  .field{margin-bottom:8px;}
+  .field label{font-weight:700;color:var(--muted);font-size:13px;display:block;margin-bottom:4px;}
+  .badge{display:inline-block;border-radius:999px;padding:4px 10px;font-size:11px;font-weight:800;}
+  .badge-success{background:var(--success)22;color:var(--success);border:1px solid var(--success)55;}
+  .badge-danger{background:var(--danger)22;color:var(--danger);border:1px solid var(--danger)55;}
+  .badge-warning{background:var(--amber)22;color:var(--amber);border:1px solid var(--amber)55;}
+  .car-card{background:var(--surface2);border-radius:12px;padding:12px;margin-bottom:10px;border:1px solid var(--border);}
+  .car-card .title{font-weight:800;font-size:15px;}
+  .car-card .sub{color:var(--muted);font-size:12px;}
+  .car-card .price{color:var(--amber);font-weight:800;font-size:16px;}
+  .toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--success);color:#fff;padding:11px 18px;border-radius:12px;font-weight:800;font-size:13px;box-shadow:0 8px 24px rgba(0,0,0,.35);z-index:60;transition:opacity .3s, visibility .3s;opacity:0;visibility:hidden;}
+  .toast.show{opacity:1;visibility:visible;}
+  .toast.error{background:var(--danger);}
+  .modal-backdrop{position:fixed;inset:0;background:rgba(6,8,10,0.72);z-index:50;display:flex;align-items:center;justify-content:center;padding:16px;}
+  .modal{width:100%;max-width:400px;background:var(--surface);border:1px solid var(--border);border-radius:18px;padding:18px;max-height:88vh;overflow-y:auto;}
+  .modal-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;}
+  .modal-head h3{margin:0;font-size:17px;}
+  .modal-close{background:none;border:none;color:var(--muted);font-size:20px;cursor:pointer;}
+  .tabbar{display:flex;gap:4px;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:4px;margin-bottom:16px;}
+  .tabbar button{flex:1;border:none;background:transparent;color:var(--muted);font-weight:700;font-size:13px;padding:8px;border-radius:9px;cursor:pointer;}
+  .tabbar button.active{background:var(--amber);color:var(--amber-ink);}
+  .hidden{display:none !important;}
+  .text-center{text-align:center;}
+  .mt-8{margin-top:8px;}
+  .mb-8{margin-bottom:8px;}
+  .flex-between{display:flex;justify-content:space-between;align-items:center;}
+  ::-webkit-scrollbar{width:0;height:0;}
+</style>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+</head>
+<body>
+<div id="toast-el" class="toast"></div>
+<div id="app"></div>
+
+<script>
+/* ============================ نفس إعدادات Firebase ============================ */
+const STORAGE_KEY = "rental-db-v2";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyCNp8pVNX84MyMgIsuiV9K6DE3tximsrRg",
+  authDomain: "location-fded9.firebaseapp.com",
+  databaseURL: "https://location-fded9-default-rtdb.firebaseio.com",
+  projectId: "location-fded9",
+  storageBucket: "location-fded9.firebasestorage.app",
+  messagingSenderId: "418304217437",
+  appId: "1:418304217437:web:3656ef204f2b453abe18b4",
+  measurementId: "G-LQ7CP86DR5"
+};
+
+let dbRef;
+try {
+  firebase.initializeApp(firebaseConfig);
+  dbRef = firebase.database().ref(STORAGE_KEY);
+} catch (e) {
+  dbRef = { on: () => {}, set: () => {} };
+}
+
+/* ============================ الأدوات المساعدة ============================ */
+const todayStr = () => new Date().toISOString().slice(0, 10);
+const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+const addDays = (dateStr, n) => { const d = new Date(dateStr); d.setDate(d.getDate() + n); return d.toISOString().slice(0, 10); };
+const daysBetween = (a, b) => Math.round((new Date(b) - new Date(a)) / 86400000);
+const fmtMoney = (n) => `${Number(n || 0).toLocaleString("en-US")} د.ج`;
+const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+
+function showToast(msg, type = "success") {
+  const el = document.getElementById("toast-el");
+  el.textContent = msg;
+  el.className = "toast show" + (type === "error" ? " error" : "");
+  clearTimeout(window.__toastTimer);
+  window.__toastTimer = setTimeout(() => { el.className = "toast"; }, 2600);
+}
+
+/* ============================ حالة التطبيق ============================ */
+let state = {
+  db: null,
+  customer: null, // الزبون المسجل دخوله
+  tab: "cars", // cars | reservations | profile
+  modal: null,
+  selectedCar: null,
+  startDate: todayStr(),
+  endDate: addDays(todayStr(), 1),
+  loading: true
+};
+
+function render() {
+  document.getElementById("app").innerHTML = renderApp();
+}
+
+function renderApp() {
+  if (state.loading) {
+    return `
+      <div class="wrap" style="display:flex;align-items:center;justify-content:center;min-height:80vh;">
+        <div style="text-align:center;color:var(--muted);">
+          <div style="font-size:40px;margin-bottom:12px;">⏳</div>
+          <div>جاري تحميل البيانات...</div>
+        </div>
+      </div>
+    `;
+  }
+
+  if (!state.customer) {
+    return renderLogin();
+  }
+
+  return `
+    <div class="wrap">
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:12px 0;">
+        <div style="font-weight:800;font-size:18px;">🚗 Adam Location</div>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <span style="font-size:13px;color:var(--muted);">👤 ${esc(state.customer.name)}</span>
+          <button onclick="App.logout()" style="background:none;border:none;color:var(--danger);font-size:14px;cursor:pointer;">🚪</button>
+        </div>
+      </div>
+
+      <div class="tabbar">
+        <button class="${state.tab === 'cars' ? 'active' : ''}" onclick="App.setTab('cars')">🚗 السيارات</button>
+        <button class="${state.tab === 'reservations' ? 'active' : ''}" onclick="App.setTab('reservations')">📅 حجوزاتي</button>
+        <button class="${state.tab === 'profile' ? 'active' : ''}" onclick="App.setTab('profile')">👤 حسابي</button>
+      </div>
+
+      ${state.tab === 'cars' ? renderCars() : ''}
+      ${state.tab === 'reservations' ? renderReservations() : ''}
+      ${state.tab === 'profile' ? renderProfile() : ''}
+    </div>
+    ${state.modal ? renderModal() : ''}
+  `;
+}
+
+/* ============================ تسجيل الدخول ============================ */
+function renderLogin() {
+  return `
+    <div class="wrap" style="display:flex;align-items:center;justify-content:center;min-height:80vh;">
+      <div style="width:100%;max-width:380px;">
+        <div style="text-align:center;margin-bottom:24px;">
+          <div style="font-size:48px;margin-bottom:8px;">🚗</div>
+          <h1 style="font-size:24px;margin:0;">Adam Location</h1>
+          <p style="color:var(--muted);font-size:14px;">تسجيل الدخول أو إنشاء حساب</p>
+        </div>
+        
+        <div class="card">
+          <div class="field">
+            <label>رقم الهاتف</label>
+            <input id="login-phone" class="input" placeholder="05xxxxxxxx" />
+          </div>
+          <div class="field">
+            <label>الرمز السري</label>
+            <input id="login-password" type="password" class="input" placeholder="******" />
+          </div>
+          <button class="btn btn-primary" onclick="App.login()">🔑 تسجيل الدخول</button>
+          <div style="text-align:center;margin-top:12px;">
+            <button style="background:none;border:none;color:var(--amber);cursor:pointer;font-size:13px;" onclick="App.openRegister()">ليس لديك حساب؟ سجل الآن</button>
+          </div>
+          <div style="text-align:center;margin-top:8px;">
+            <button style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:12px;" onclick="App.openForgotPassword()">نسيت الرمز السري؟</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+App.login = () => {
+  const phone = document.getElementById("login-phone").value.trim();
+  const password = document.getElementById("login-password").value.trim();
+
+  if (!phone || !password) return showToast("أدخل رقم الهاتف والرمز السري", "error");
+
+  const customer = state.db.customers.find(c => c.phone === phone && c.password === password);
+  
+  if (!customer) return showToast("رقم الهاتف أو الرمز السري غير صحيح", "error");
+  if (customer.blacklisted) return showToast("❌ هذا الحساب محظور، تواصل مع الإدارة", "error");
+
+  state.customer = customer;
+  state.tab = "cars";
+  render();
+  showToast(`مرحباً ${customer.name} 👋`);
+};
+
+App.openRegister = () => {
+  state.modal = { type: "register" };
+  render();
+};
+
+App.submitRegister = () => {
+  const name = document.getElementById("reg-name").value.trim();
+  const phone = document.getElementById("reg-phone").value.trim();
+  const password = document.getElementById("reg-password").value.trim();
+  const confirmPassword = document.getElementById("reg-confirm").value.trim();
+
+  if (!name || !phone || !password) return showToast("أكمل جميع الحقول", "error");
+  if (password.length < 4) return showToast("الرمز السري يجب أن يكون 4 أحرف على الأقل", "error");
+  if (password !== confirmPassword) return showToast("الرمز السري غير متطابق", "error");
+
+  const existing = state.db.customers.find(c => c.phone === phone);
+  if (existing) return showToast("هذا الرقم مسجل بالفعل", "error");
+
+  const newCustomer = {
+    id: uid(),
+    name: name,
+    phone: phone,
+    password: password,
+    whitelisted: false,
+    blacklisted: false,
+    createdAt: todayStr()
+  };
+
+  const db = state.db;
+  db.customers.push(newCustomer);
+  
+  // حفظ في Firebase
+  dbRef.set(db);
+
+  state.db = db;
+  state.customer = newCustomer;
+  state.modal = null;
+  render();
+  showToast(`تم التسجيل بنجاح! مرحباً ${name} 👋`);
+};
+
+App.openForgotPassword = () => {
+  state.modal = { type: "forgotPassword" };
+  render();
+};
+
+App.submitForgotPassword = () => {
+  const phone = document.getElementById("forgot-phone").value.trim();
+
+  if (!phone) return showToast("أدخل رقم الهاتف", "error");
+
+  const customer = state.db.customers.find(c => c.phone === phone);
+  if (!customer) return showToast("هذا الرقم غير مسجل", "error");
+
+  // إنشاء طلب استعادة الرمز السري
+  const resetRequest = {
+    id: uid(),
+    customerId: customer.id,
+    name: customer.name,
+    phone: customer.phone,
+    requestedAt: todayStr(),
+    status: "pending"
+  };
+
+  const db = state.db;
+  if (!db.passwordResetRequests) db.passwordResetRequests = [];
+  db.passwordResetRequests.push(resetRequest);
+  dbRef.set(db);
+
+  state.db = db;
+  state.modal = null;
+  render();
+  showToast(`✅ تم إرسال طلب استعادة الرمز السري. سيتم التواصل معك قريباً.`);
+};
+
+App.logout = () => {
+  state.customer = null;
+  state.tab = "cars";
+  render();
+  showToast("تم تسجيل الخروج");
+};
+
+App.setTab = (tab) => {
+  state.tab = tab;
+  render();
+};
+
+/* ============================ عرض السيارات ============================ */
+function renderCars() {
+  const availableCars = state.db.cars.filter(c => c.status === "available");
+  const contact = state.db.contact || { phone: "", platformLink: "", platformLabel: "" };
+
+  return `
+    <div class="flex-between" style="margin-bottom:12px;">
+      <div style="font-weight:700;">🚗 السيارات المتاحة (${availableCars.length})</div>
+      <a href="${contact.platformLink || '#'}" target="_blank" style="color:var(--amber);font-size:13px;text-decoration:none;">📱 ${contact.platformLabel || 'اتصل بنا'}</a>
+    </div>
+
+    ${availableCars.length === 0 ? `
+      <div class="card text-center" style="padding:40px 16px;color:var(--muted);">
+        <div style="font-size:40px;">😔</div>
+        <div>لا توجد سيارات متاحة حالياً</div>
+      </div>
+    ` : availableCars.map(car => `
+      <div class="car-card">
+        <div class="flex-between">
+          <div>
+            <div class="title">${esc(car.brand)} ${esc(car.model)}</div>
+            <div class="sub">${car.year} · ${esc(car.plate)}</div>
+          </div>
+          <span class="badge badge-success">متاحة</span>
+        </div>
+        <div class="flex-between" style="margin-top:8px;">
+          <div class="price">${fmtMoney(car.dailyPrice)} <span style="font-size:12px;color:var(--muted);font-weight:400;">/ يوم</span></div>
+          <button class="btn btn-primary" style="width:auto;padding:6px 16px;font-size:12px;" onclick="App.openBooking('${car.id}')">📅 احجز</button>
+        </div>
+      </div>
+    `).join("")}
+  `;
+}
+
+/* ============================ الحجز ============================ */
+App.openBooking = (carId) => {
+  state.selectedCar = state.db.cars.find(c => c.id === carId);
+  state.startDate = todayStr();
+  state.endDate = addDays(todayStr(), 1);
+  state.modal = { type: "booking" };
+  render();
+};
+
+App.submitBooking = () => {
+  const car = state.selectedCar;
+  const startDate = document.getElementById("book-start").value;
+  const endDate = document.getElementById("book-end").value;
+
+  if (!startDate || !endDate) return showToast("اختر تاريخ البداية والنهاية", "error");
+  if (daysBetween(startDate, endDate) < 1) return showToast("تاريخ النهاية يجب أن يكون بعد البداية", "error");
+
+  // التحقق من توفر السيارة في الفترة المحددة
+  const overlapping = state.db.reservations.some(r => 
+    r.carId === car.id && 
+    r.status !== "cancelled" && 
+    r.status !== "completed" &&
+    ((startDate >= r.startDate && startDate < r.endDate) || 
+     (endDate > r.startDate && endDate <= r.endDate) ||
+     (startDate <= r.startDate && endDate >= r.endDate))
+  );
+
+  if (overlapping) return showToast("هذه السيارة محجوزة في الفترة المحددة", "error");
+
+  const days = daysBetween(startDate, endDate);
+  const totalPrice = days * car.dailyPrice;
+
+  const reservation = {
+    id: uid(),
+    carId: car.id,
+    customerId: state.customer.id,
+    customerName: state.customer.name,
+    customerPhone: state.customer.phone,
+    startDate: startDate,
+    endDate: endDate,
+    status: "pending",
+    totalPrice: totalPrice,
+    createdAt: todayStr()
+  };
+
+  const db = state.db;
+  db.reservations.push(reservation);
+  dbRef.set(db);
+
+  state.db = db;
+  state.modal = null;
+  state.selectedCar = null;
+  render();
+  showToast(`✅ تم إرسال طلب الحجز! في انتظار تأكيد الإدارة.`);
+};
+
+/* ============================ حجوزاتي ============================ */
+function renderReservations() {
+  const myReservations = state.db.reservations.filter(r => r.customerId === state.customer.id);
+  const sorted = [...myReservations].sort((a, b) => a.createdAt < b.createdAt ? 1 : -1);
+
+  const statusMap = {
+    pending: { label: "بانتظار التأكيد", color: "badge-warning" },
+    confirmed: { label: "قيد التنفيذ", color: "badge-success" },
+    completed: { label: "منتهي", color: "badge" },
+    cancelled: { label: "ملغى", color: "badge-danger" }
+  };
+
+  return `
+    <div style="font-weight:700;margin-bottom:12px;">📅 حجوزاتي (${myReservations.length})</div>
+    ${myReservations.length === 0 ? `
+      <div class="card text-center" style="padding:40px 16px;color:var(--muted);">
+        <div style="font-size:40px;">📭</div>
+        <div>لا توجد حجوزات</div>
+        <button class="btn btn-primary mt-8" onclick="App.setTab('cars')">تصفح السيارات</button>
+      </div>
+    ` : sorted.map(r => {
+      const car = state.db.cars.find(c => c.id === r.carId);
+      const status = statusMap[r.status] || statusMap.pending;
+      return `
+        <div class="car-card">
+          <div class="flex-between">
+            <div>
+              <div class="title">${car ? esc(car.brand) + ' ' + esc(car.model) : 'سيارة محذوفة'}</div>
+              <div class="sub">${r.startDate} → ${r.endDate} · ${daysBetween(r.startDate, r.endDate)} يوم</div>
+            </div>
+            <span class="badge ${status.color}">${status.label}</span>
+          </div>
+          <div class="flex-between" style="margin-top:8px;">
+            <div class="price">${fmtMoney(r.totalPrice)}</div>
+            ${r.status === 'pending' ? `<button class="btn btn-danger" style="width:auto;padding:4px 12px;font-size:11px;" onclick="App.cancelReservation('${r.id}')">إلغاء</button>` : ''}
+            ${r.status === 'confirmed' ? `<span style="font-size:12px;color:var(--muted);">✅ مؤكد</span>` : ''}
+            ${r.status === 'completed' ? `<span style="font-size:12px;color:var(--success);">✅ منتهي</span>` : ''}
+          </div>
+        </div>
+      `;
+    }).join("")}
+  `;
+}
+
+App.cancelReservation = (resId) => {
+  if (!confirm("تأكيد إلغاء الحجز؟")) return;
+  
+  const db = state.db;
+  const reservation = db.reservations.find(r => r.id === resId);
+  if (reservation.status !== "pending") return showToast("لا يمكن إلغاء هذا الحجز", "error");
+
+  db.reservations = db.reservations.map(r => 
+    r.id === resId ? { ...r, status: "cancelled" } : r
+  );
+  dbRef.set(db);
+  state.db = db;
+  render();
+  showToast("تم إلغاء الحجز");
+};
+
+/* ============================ حسابي ============================ */
+function renderProfile() {
+  const c = state.customer;
+  const resCount = state.db.reservations.filter(r => r.customerId === c.id).length;
+
+  return `
+    <div class="card">
+      <div style="text-align:center;padding:8px 0;">
+        <div style="font-size:48px;">👤</div>
+        <div style="font-size:18px;font-weight:800;">${esc(c.name)}</div>
+        <div style="color:var(--muted);font-size:14px;">📱 ${esc(c.phone)}</div>
+        ${c.whitelisted ? `<span class="badge badge-success" style="margin-top:8px;">⭐ زبون مميز</span>` : ''}
+        <div style="margin-top:12px;font-size:13px;color:var(--muted);">📅 عدد الحجوزات: ${resCount}</div>
+        <div style="font-size:13px;color:var(--muted);">تاريخ الانضمام: ${c.createdAt}</div>
+      </div>
+    </div>
+
+    <button class="btn btn-danger" onclick="App.logout()">🚪 تسجيل الخروج</button>
+  `;
+}
+
+/* ============================ النوافذ المنبثقة ============================ */
+function renderModal() {
+  const m = state.modal;
+  let title = "", content = "";
+
+  if (m.type === "register") {
+    title = "📝 إنشاء حساب جديد";
+    content = `
+      <div class="field"><label>الاسم الكامل</label><input id="reg-name" class="input" placeholder="مثال: أحمد محمد" /></div>
+      <div class="field"><label>رقم الهاتف</label><input id="reg-phone" class="input" placeholder="05xxxxxxxx" /></div>
+      <div class="field"><label>الرمز السري</label><input id="reg-password" type="password" class="input" placeholder="أدخل رمزاً سرياً" /></div>
+      <div class="field"><label>تأكيد الرمز السري</label><input id="reg-confirm" type="password" class="input" placeholder="أعد إدخال الرمز" /></div>
+      <button class="btn btn-primary" onclick="App.submitRegister()">✅ تسجيل</button>
+    `;
+  }
+
+  if (m.type === "forgotPassword") {
+    title = "🔑 استعادة الرمز السري";
+    content = `
+      <div class="field"><label>رقم الهاتف</label><input id="forgot-phone" class="input" placeholder="05xxxxxxxx" /></div>
+      <div style="font-size:12px;color:var(--muted);margin-bottom:12px;">سيتم إرسال طلب إلى الإدارة لإعادة تعيين الرمز السري</div>
+      <button class="btn btn-primary" onclick="App.submitForgotPassword()">📤 إرسال الطلب</button>
+    `;
+  }
+
+  if (m.type === "booking") {
+    const car = state.selectedCar;
+    title = `📅 حجز ${esc(car.brand)} ${esc(car.model)}`;
+    const days = daysBetween(state.startDate, state.endDate);
+    const total = days * car.dailyPrice;
+    content = `
+      <div style="margin-bottom:12px;">
+        <div style="font-size:13px;color:var(--muted);">${esc(car.brand)} ${esc(car.model)} · ${car.year}</div>
+        <div style="font-weight:800;color:var(--amber);">${fmtMoney(car.dailyPrice)} / يوم</div>
+      </div>
+      <div class="field"><label>تاريخ الاستلام</label><input id="book-start" type="date" class="input" value="${state.startDate}" onchange="App.updateBookingTotal()" /></div>
+      <div class="field"><label>تاريخ التسليم</label><input id="book-end" type="date" class="input" value="${state.endDate}" onchange="App.updateBookingTotal()" /></div>
+      <div id="booking-total" style="background:var(--surface2);border-radius:10px;padding:12px;text-align:center;margin-bottom:12px;">
+        <div style="font-size:13px;color:var(--muted);">الإجمالي</div>
+        <div style="font-size:20px;font-weight:800;color:var(--amber);">${fmtMoney(total)}</div>
+        <div style="font-size:12px;color:var(--muted);">${days} يوم × ${fmtMoney(car.dailyPrice)}</div>
+      </div>
+      <button class="btn btn-success" onclick="App.submitBooking()">✅ تأكيد الحجز</button>
+    `;
+  }
+
+  return `
+    <div class="modal-backdrop" onclick="if(event.target===this)App.closeModal()">
+      <div class="modal">
+        <div class="modal-head">
+          <h3>${title}</h3>
+          <button class="modal-close" onclick="App.closeModal()">✕</button>
+        </div>
+        ${content}
+      </div>
+    </div>
+  `;
+}
+
+App.updateBookingTotal = () => {
+  const start = document.getElementById("book-start").value;
+  const end = document.getElementById("book-end").value;
+  if (!start || !end) return;
+  
+  const days = daysBetween(start, end);
+  const total = days * state.selectedCar.dailyPrice;
+  
+  const el = document.getElementById("booking-total");
+  if (el) {
+    el.innerHTML = `
+      <div style="font-size:13px;color:var(--muted);">الإجمالي</div>
+      <div style="font-size:20px;font-weight:800;color:var(--amber);">${fmtMoney(total)}</div>
+      <div style="font-size:12px;color:var(--muted);">${days} يوم × ${fmtMoney(state.selectedCar.dailyPrice)}</div>
+    `;
+  }
+};
+
+App.closeModal = () => {
+  state.modal = null;
+  render();
+};
+
+/* ============================ تحميل البيانات ============================ */
+let __firstLoad = true;
+
+function loadData() {
+  state.loading = true;
+  render();
+
+  dbRef.on("value", (snapshot) => {
+    const remote = snapshot.val();
+    if (remote) {
+      state.db = remote;
+    } else if (__firstLoad) {
+      // إذا كانت قاعدة البيانات فارغة، نضيف بيانات افتراضية
+      const seed = {
+        cars: [
+          { id: "c1", plate: "أ ب ج 1234", brand: "تويوتا", model: "كورولا", year: 2022, status: "available", currentKm: 18500, dailyPrice: 12000, oilIntervalKm: 5000, lastOilKm: 15000, insuranceExpiry: addDays(todayStr(), 20), inspectionExpiry: addDays(todayStr(), 200) },
+          { id: "c2", plate: "د هـ و 5678", brand: "هيونداي", model: "إلنترا", year: 2021, status: "rented", currentKm: 42000, dailyPrice: 10000, oilIntervalKm: 5000, lastOilKm: 41800, insuranceExpiry: addDays(todayStr(), 5), inspectionExpiry: addDays(todayStr(), 15) },
+          { id: "c3", plate: "ز ح ط 9012", brand: "كيا", model: "سيراتو", year: 2023, status: "available", currentKm: 9000, dailyPrice: 11000, oilIntervalKm: 5000, lastOilKm: 4500, insuranceExpiry: addDays(todayStr(), 300), inspectionExpiry: addDays(todayStr(), 300) },
+          { id: "c4", plate: "ك ل م 3456", brand: "نيسان", model: "صني", year: 2020, status: "available", currentKm: 61000, dailyPrice: 8500, oilIntervalKm: 5000, lastOilKm: 58200, insuranceExpiry: addDays(todayStr(), 60), inspectionExpiry: addDays(todayStr(), 90) },
+        ],
+        customers: [],
+        reservations: [],
+        kmHistory: [],
+        finances: [],
+        contact: {
+          phone: "0555555555",
+          platformLink: "https://wa.me/213555555555",
+          platformLabel: "واتساب"
+        },
+        passwordResetRequests: []
+      };
+      state.db = seed;
+      dbRef.set(seed);
+    }
+    __firstLoad = false;
+    state.loading = false;
+    render();
+  }, (error) => {
+    console.error("Firebase error:", error);
+    state.loading = false;
+    render();
+    showToast("تعذر الاتصال بالخادم", "error");
+  });
+}
+
+/* ============================ تشغيل التطبيق ============================ */
+window.App = {};
+loadData();
+
+</script>
+</body>
+</html>
