@@ -30,7 +30,7 @@ jobs:
 
       - name: Build APK
         run: |
-          bubblewrap build --skipPwaValidation \
+          yes | bubblewrap build --skipPwaValidation \
             --password android --keyPassword android
 
       - name: Upload APK
