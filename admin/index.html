@@ -182,6 +182,7 @@
   
   .notification-badge {
     position: relative;
+    cursor: pointer;
   }
   .notification-dot {
     position: absolute;
@@ -197,6 +198,17 @@
     0%, 100% { transform: scale(1); }
     50% { transform: scale(1.3); }
   }
+  
+  .sync-status {
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    margin-right: 4px;
+  }
+  .sync-online { background: #3FA796; }
+  .sync-offline { background: #E5573F; }
+  .sync-syncing { background: #F2B134; animation: pulse 1s infinite; }
 </style>
 </head>
 <body>
@@ -206,7 +218,7 @@
   <div class="brand-name">Adam Locations</div>
   <div style="font-size:14px;color:#8B93A1;margin-top:4px;">⚡ لوحة التحكم المتقدمة</div>
   <div class="loader"></div>
-  <div class="status" id="splash-status">جاري التحميل...</div>
+  <div class="status" id="splash-status">🔄 جاري الاتصال بالسيرفر...</div>
 </div>
 
 <div id="toast" class="toast"></div>
@@ -217,7 +229,7 @@
 
 <script>
 /* ============================================================
-   🔥 إعدادات Firebase
+   🔥 إعدادات Firebase - متصلة بالسيرفر
    ============================================================ */
 const firebaseConfig = {
   apiKey: "AIzaSyCNp8pVNX84MyMgIsuiV9K6DE3tximsrRg",
@@ -336,13 +348,16 @@ function getDefaultData() {
 }
 
 /* ============================================================
-   💾 قاعدة البيانات
+   💾 قاعدة البيانات مع مزامنة السيرفر
    ============================================================ */
 let db;
 let dbRef = null;
 let firebaseReady = false;
 let appStarted = false;
+let isSyncing = false;
+let syncAttempts = 0;
 
+// تحميل البيانات المحلية
 try {
   const saved = localStorage.getItem(STORAGE_KEY);
   db = saved ? JSON.parse(saved) : getDefaultData();
@@ -359,25 +374,48 @@ function saveLocal() {
 function saveData() {
   saveLocal();
   if (dbRef && firebaseReady) {
-    dbRef.set(db).catch(() => {});
+    isSyncing = true;
+    dbRef.set(db)
+      .then(() => {
+        isSyncing = false;
+        updateSyncStatus();
+      })
+      .catch((error) => {
+        isSyncing = false;
+        updateSyncStatus();
+        console.warn('⚠️ فشل المزامنة مع السيرفر:', error.message);
+      });
   }
 }
 
 /* ============================================================
-   🔥 تهيئة Firebase
+   🔥 تهيئة Firebase والاتصال بالسيرفر
    ============================================================ */
 function initFirebase() {
   const statusEl = document.getElementById('splash-status');
   try {
-    if (typeof firebase === 'undefined') throw new Error('Firebase غير محمل');
+    if (typeof firebase === 'undefined') {
+      throw new Error('Firebase غير محمل');
+    }
+    
     firebase.initializeApp(firebaseConfig);
     dbRef = firebase.database().ref(STORAGE_KEY);
     firebaseReady = true;
-    if (statusEl) statusEl.textContent = '✅ متصل بالخادم';
+    
+    if (statusEl) statusEl.textContent = '✅ متصل بالسيرفر';
     startSync();
+    
   } catch (e) {
-    console.warn('فشل تهيئة Firebase:', e.message);
-    if (statusEl) statusEl.textContent = '⚠️ وضع غير متصل';
+    console.warn('⚠️ فشل تهيئة Firebase:', e.message);
+    if (statusEl) statusEl.textContent = '⚠️ وضع غير متصل - بيانات محلية';
+    
+    // محاولة إعادة الاتصال بعد 5 ثواني
+    setTimeout(() => {
+      if (!firebaseReady && !appStarted) {
+        initFirebase();
+      }
+    }, 5000);
+    
     setTimeout(() => {
       if (!appStarted) {
         appStarted = true;
@@ -393,43 +431,69 @@ let firstSync = true;
 
 function startSync() {
   if (!dbRef) return;
+  
+  // استماع للتغييرات من السيرفر
   dbRef.on('value', (snapshot) => {
     const remote = snapshot.val();
     if (remote) {
-      db = remote;
-      saveLocal();
-      if (firstSync) {
+      // دمج البيانات من السيرفر مع المحلية
+      const localData = db;
+      const remoteData = remote;
+      
+      // التحقق من التحديثات
+      if (JSON.stringify(localData) !== JSON.stringify(remoteData)) {
+        db = remoteData;
+        saveLocal();
+        if (firstSync) {
+          firstSync = false;
+          if (!appStarted) {
+            appStarted = true;
+            hideSplash();
+            render();
+            showToast('✅ مزامنة مع السيرفر', 'success');
+          }
+        } else {
+          render();
+          showToast('🔄 تم تحديث البيانات من السيرفر', 'success');
+        }
+      } else if (firstSync) {
         firstSync = false;
         if (!appStarted) {
           appStarted = true;
           hideSplash();
           render();
-          showToast('✅ مزامنة مع الخادم', 'success');
+          showToast('✅ متصل بالسيرفر', 'success');
         }
-      } else {
-        render();
       }
     } else if (firstSync) {
-      dbRef.set(db).then(() => {
-        console.log('✅ تم إرسال البيانات الأولية');
-        firstSync = false;
-        if (!appStarted) {
-          appStarted = true;
-          hideSplash();
-          render();
-          showToast('✅ مزامنة مع الخادم', 'success');
-        }
-      }).catch(() => {
-        firstSync = false;
-        if (!appStarted) {
-          appStarted = true;
-          hideSplash();
-          render();
-          showToast('⚠️ بيانات محلية فقط', 'warning');
-        }
-      });
+      // أول مرة - إرسال البيانات إلى السيرفر
+      dbRef.set(db)
+        .then(() => {
+          console.log('✅ تم إرسال البيانات الأولية إلى السيرفر');
+          firstSync = false;
+          if (!appStarted) {
+            appStarted = true;
+            hideSplash();
+            render();
+            showToast('✅ مزامنة مع السيرفر', 'success');
+          }
+        })
+        .catch((error) => {
+          console.warn('⚠️ فشل إرسال البيانات:', error.message);
+          firstSync = false;
+          if (!appStarted) {
+            appStarted = true;
+            hideSplash();
+            render();
+            showToast('⚠️ بيانات محلية فقط - جاري المحاولة...', 'warning');
+          }
+        });
     }
-  }, () => {
+    
+    updateSyncStatus();
+    
+  }, (error) => {
+    console.warn('⚠️ خطأ في الاتصال بالسيرفر:', error.message);
     if (firstSync && !appStarted) {
       firstSync = false;
       setTimeout(() => {
@@ -437,11 +501,25 @@ function startSync() {
           appStarted = true;
           hideSplash();
           render();
-          showToast('⚠️ وضع غير متصل', 'warning');
+          showToast('⚠️ وضع غير متصل - جاري المحاولة...', 'warning');
         }
       }, 3000);
     }
+    updateSyncStatus();
   });
+}
+
+function updateSyncStatus() {
+  const statusEl = document.querySelector('.sync-status');
+  if (statusEl) {
+    if (isSyncing) {
+      statusEl.className = 'sync-status sync-syncing';
+    } else if (firebaseReady) {
+      statusEl.className = 'sync-status sync-online';
+    } else {
+      statusEl.className = 'sync-status sync-offline';
+    }
+  }
 }
 
 function hideSplash() {
@@ -516,7 +594,6 @@ function updateCarKm(carId, newKm) {
     return false;
   }
   
-  // تسجيل الكيلومترات في التاريخ
   if (!car.kmHistory) car.kmHistory = [];
   car.kmHistory.push({
     date: todayStr(),
@@ -525,8 +602,6 @@ function updateCarKm(carId, newKm) {
   });
   
   car.currentKm = newKm;
-  
-  // التحقق من تغيير الزيت
   checkOilChange(car);
   
   saveData();
@@ -535,26 +610,19 @@ function updateCarKm(carId, newKm) {
 }
 
 function checkOilChange(car) {
-  if (!car.oilChanges || car.oilChanges.length === 0) {
-    // أول تغيير زيت: يبدأ من 0 أو من الكيلومترات الحالية
-    return;
-  }
+  if (!car.oilChanges || car.oilChanges.length === 0) return;
   
   const lastOil = car.oilChanges[car.oilChanges.length - 1];
   const interval = db.settings?.oilInterval || OIL_CHANGE_INTERVAL;
   const kmSinceOil = car.currentKm - lastOil.km;
+  const warningKm = db.settings?.oilWarningKm || 100;
   
-  // إذا وصلنا إلى المسافة المطلوبة لتغيير الزيت
-  if (kmSinceOil >= interval) {
-    const warningKm = db.settings?.oilWarningKm || 100;
-    if (kmSinceOil >= interval - warningKm) {
-      // إضافة إشعار
-      addNotification(
-        `🛢️ تغيير زيت ${car.brand} ${car.model}`,
-        `السيارة ${car.brand} ${car.model} (${car.plate}) تحتاج لتغيير الزيت. الكيلومترات الحالية: ${car.currentKm} كم، آخر تغيير: ${lastOil.km} كم`,
-        'oil'
-      );
-    }
+  if (kmSinceOil >= interval - warningKm) {
+    addNotification(
+      `🛢️ تغيير زيت ${car.brand} ${car.model}`,
+      `السيارة ${car.brand} ${car.model} (${car.plate}) تحتاج لتغيير الزيت. الكيلومترات الحالية: ${car.currentKm} كم، آخر تغيير: ${lastOil.km} كم`,
+      'oil'
+    );
   }
 }
 
@@ -580,7 +648,6 @@ function recordOilChange(carId) {
     nextOilKm: currentKm + interval
   });
   
-  // تسجيل في التاريخ
   if (!car.kmHistory) car.kmHistory = [];
   car.kmHistory.push({
     date: todayStr(),
@@ -645,6 +712,7 @@ function render() {
   if (state.modal) {
     app.innerHTML += renderModal();
   }
+  updateSyncStatus();
 }
 
 function renderApp() {
@@ -659,6 +727,7 @@ function renderApp() {
   ];
   
   const unreadCount = getUnreadNotifications().length;
+  const syncClass = firebaseReady ? 'sync-online' : 'sync-offline';
   
   return `
     <div class="container">
@@ -671,8 +740,9 @@ function renderApp() {
           </div>
         </div>
         <div class="header-user">
+          <span class="sync-status ${syncClass}" title="${firebaseReady ? '🟢 متصل بالسيرفر' : '🔴 غير متصل'}"></span>
           ${unreadCount > 0 ? `
-            <span class="notification-badge" onclick="showNotifications()" style="cursor:pointer;">
+            <span class="notification-badge" onclick="showNotifications()">
               🔔
               <span class="notification-dot"></span>
             </span>
@@ -714,7 +784,6 @@ function getStats() {
   const totalExpense = db.finances.filter(f => f.type === 'expense').reduce((s, f) => s + f.amount, 0);
   const netProfit = totalIncome - totalExpense;
   
-  // سيارات تحتاج تغيير زيت
   const carsNeedOil = db.cars.filter(c => {
     const oilStatus = getOilStatus(c);
     return oilStatus.status === 'critical' || oilStatus.status === 'warning';
@@ -779,6 +848,7 @@ function renderCars() {
       <div style="display:flex;gap:6px;flex-wrap:wrap;">
         <button class="btn btn-primary btn-sm" onclick="openAddCar()">➕ إضافة سيارة</button>
         <button class="btn btn-info btn-sm" onclick="checkAllOil()">🛢️ فحص الزيت</button>
+        <button class="btn btn-subtle btn-sm" onclick="syncNow()">🔄 مزامنة</button>
       </div>
     </div>
     
@@ -824,6 +894,22 @@ function renderCars() {
       `;
     }).join('')}
   `;
+}
+
+function syncNow() {
+  if (firebaseReady && dbRef) {
+    showToast('🔄 جاري المزامنة مع السيرفر...', 'warning');
+    dbRef.set(db)
+      .then(() => {
+        showToast('✅ تمت المزامنة مع السيرفر', 'success');
+      })
+      .catch((error) => {
+        showToast('❌ فشلت المزامنة: ' + error.message, 'error');
+      });
+  } else {
+    showToast('⚠️ السيرفر غير متصل - جاري المحاولة...', 'warning');
+    initFirebase();
+  }
 }
 
 function openKmUpdate(carId) {
@@ -893,8 +979,85 @@ function showNotifications() {
   render();
 }
 
+function openAddCar() {
+  state.modal = { type: 'addCar' };
+  render();
+}
+
+function submitAddCar() {
+  const brand = document.getElementById('ac-brand').value.trim();
+  const model = document.getElementById('ac-model').value.trim();
+  const plate = document.getElementById('ac-plate').value.trim();
+  const price = Number(document.getElementById('ac-price').value);
+  
+  if (!brand || !model || !plate || !price) return showToast('أكمل جميع الحقول', 'error');
+  
+  db.cars.push({
+    id: uid(),
+    brand, model, plate,
+    year: new Date().getFullYear(),
+    status: 'available',
+    currentKm: 0,
+    dailyPrice: price,
+    oilChanges: [],
+    kmHistory: [{ date: todayStr(), km: 0, type: 'initial' }]
+  });
+  
+  saveData();
+  state.modal = null;
+  render();
+  showToast('✅ تم إضافة السيارة');
+}
+
+function openEditCar(carId) {
+  state.modal = { type: 'editCar', carId };
+  render();
+}
+
+function submitEditCar() {
+  const car = db.cars.find(c => c.id === state.modal.carId);
+  if (!car) return;
+  
+  car.brand = document.getElementById('ec-brand').value.trim();
+  car.model = document.getElementById('ec-model').value.trim();
+  car.plate = document.getElementById('ec-plate').value.trim();
+  car.year = Number(document.getElementById('ec-year').value) || 2024;
+  car.dailyPrice = Number(document.getElementById('ec-price').value) || 0;
+  car.currentKm = Number(document.getElementById('ec-km').value) || 0;
+  car.status = document.getElementById('ec-status').value;
+  
+  saveData();
+  state.modal = null;
+  render();
+  showToast('✅ تم تحديث السيارة');
+}
+
+function deleteCar(carId) {
+  if (!confirm('تأكيد حذف السيارة؟')) return;
+  db.cars = db.cars.filter(c => c.id !== carId);
+  saveData();
+  render();
+  showToast('تم حذف السيارة');
+}
+
+function toMaintenance(carId) {
+  const car = db.cars.find(c => c.id === carId);
+  car.status = 'maintenance';
+  saveData();
+  render();
+  showToast('🔧 تم تحويل السيارة إلى الصيانة');
+}
+
+function fromMaintenance(carId) {
+  const car = db.cars.find(c => c.id === carId);
+  car.status = 'available';
+  saveData();
+  render();
+  showToast('✅ تم نزع السيارة من الصيانة');
+}
+
 /* ============================================================
-   📅 الحجوزات
+   📅 الحجوزات (نفس الكود السابق مع saveData)
    ============================================================ */
 function renderReservations() {
   const sorted = [...db.reservations].sort((a, b) => a.createdAt < b.createdAt ? 1 : -1);
@@ -1304,7 +1467,7 @@ function renderSettings() {
         <div><span class="text-muted">الحجوزات:</span> ${db.reservations.length}</div>
         <div><span class="text-muted">المعاملات المالية:</span> ${db.finances.length}</div>
         <div><span class="text-muted">الإشعارات:</span> ${db.notifications ? db.notifications.length : 0}</div>
-        <div><span class="text-muted">الحالة:</span> ${firebaseReady ? '🟢 متصل' : '🔴 غير متصل'}</div>
+        <div><span class="text-muted">الحالة:</span> ${firebaseReady ? '🟢 متصل بالسيرفر' : '🔴 غير متصل'}</div>
       </div>
     </div>
   `;
@@ -1575,27 +1738,40 @@ function closeModal() {
 }
 
 /* ============================================================
-   🚀 بدء التطبيق
+   🚀 بدء التطبيق مع الاتصال بالسيرفر
    ============================================================ */
+// بدء التطبيق مباشرة مع محاولة الاتصال بالسيرفر
 setTimeout(() => {
+  // محاولة تحميل Firebase وبدء الاتصال
   if (typeof firebase !== 'undefined') {
     initFirebase();
   } else {
+    // إذا لم يتم تحميل Firebase، حاول مجدداً
+    const checkFirebase = setInterval(() => {
+      if (typeof firebase !== 'undefined') {
+        clearInterval(checkFirebase);
+        initFirebase();
+      }
+    }, 1000);
+    
+    // في حال فشل التحميل بعد 5 ثواني
     setTimeout(() => {
-      if (!appStarted) {
+      clearInterval(checkFirebase);
+      if (!appStarted && !firebaseReady) {
         appStarted = true;
         hideSplash();
         render();
-        showToast('⚠️ وضع غير متصل', 'warning');
+        showToast('⚠️ تعذر الاتصال بالسيرفر - بيانات محلية', 'warning');
       }
-    }, 3000);
+    }, 6000);
   }
 }, 500);
 
-console.log('🔐 Adam Locations - لوحة التحكم المتقدمة');
+console.log('🔐 Adam Locations - لوحة التحكم المتقدمة مع سيرفر Firebase');
 console.log('📊 السيارات:', db.cars.length);
 console.log('👥 الزبائن:', db.customers.length);
 console.log('📅 الحجوزات:', db.reservations.length);
+console.log('🔌 الحالة:', firebaseReady ? '🟢 متصل بالسيرفر' : '🔴 غير متصل');
 </script>
 </body>
 </html>
