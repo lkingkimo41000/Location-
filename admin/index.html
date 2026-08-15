@@ -209,6 +209,14 @@
   .sync-online { background: #3FA796; }
   .sync-offline { background: #E5573F; }
   .sync-syncing { background: #F2B134; animation: pulse 1s infinite; }
+  
+  .km-display {
+    font-size: 13px;
+    background: #1A212E;
+    padding: 2px 10px;
+    border-radius: 6px;
+    display: inline-block;
+  }
 </style>
 </head>
 <body>
@@ -271,11 +279,11 @@ function getDefaultData() {
   const t = todayStr();
   return {
     cars: [
-      { id: "c1", plate: "أ ب ج 1234", brand: "Mercedes", model: "G-Class", year: 2024, status: "available", currentKm: 2500, dailyPrice: 35000, oilChanges: [{ date: t, km: 2500, nextOilKm: 12500 }], kmHistory: [{ date: t, km: 2500, type: "initial" }] },
-      { id: "c2", plate: "د هـ و 5678", brand: "Toyota", model: "Land Cruiser", year: 2023, status: "available", currentKm: 12000, dailyPrice: 25000, oilChanges: [{ date: "2025-01-15", km: 8000, nextOilKm: 18000 }], kmHistory: [{ date: "2025-01-15", km: 8000, type: "oil_change" }, { date: "2025-01-20", km: 12000, type: "update" }] },
-      { id: "c3", plate: "ز ح ط 9012", brand: "BMW", model: "X5", year: 2024, status: "rented", currentKm: 8000, dailyPrice: 28000, oilChanges: [{ date: "2025-02-01", km: 7500, nextOilKm: 17500 }], kmHistory: [{ date: "2025-02-01", km: 7500, type: "oil_change" }, { date: "2025-02-05", km: 8000, type: "update" }] },
-      { id: "c4", plate: "ك ل م 3456", brand: "Audi", model: "Q7", year: 2023, status: "available", currentKm: 15000, dailyPrice: 22000, oilChanges: [{ date: "2024-12-10", km: 5000, nextOilKm: 15000 }], kmHistory: [{ date: "2024-12-10", km: 5000, type: "oil_change" }, { date: "2025-01-20", km: 15000, type: "update" }] },
-      { id: "c5", plate: "س ص ع 7890", brand: "Range Rover", model: "Sport", year: 2024, status: "maintenance", currentKm: 5000, dailyPrice: 32000, oilChanges: [], kmHistory: [{ date: "2025-02-10", km: 5000, type: "initial" }] }
+      { id: "c1", plate: "أ ب ج 1234", brand: "Mercedes", model: "G-Class", year: 2024, status: "available", currentKm: 2500, dailyPrice: 35000, oilChanges: [{ date: t, km: 2500, nextOilKm: 12500 }], kmHistory: [{ date: t, km: 2500, type: "initial", added: 0 }] },
+      { id: "c2", plate: "د هـ و 5678", brand: "Toyota", model: "Land Cruiser", year: 2023, status: "available", currentKm: 12000, dailyPrice: 25000, oilChanges: [{ date: "2025-01-15", km: 8000, nextOilKm: 18000 }], kmHistory: [{ date: "2025-01-15", km: 8000, type: "oil_change", added: 0 }, { date: "2025-01-20", km: 12000, type: "update", added: 4000 }] },
+      { id: "c3", plate: "ز ح ط 9012", brand: "BMW", model: "X5", year: 2024, status: "rented", currentKm: 8000, dailyPrice: 28000, oilChanges: [{ date: "2025-02-01", km: 7500, nextOilKm: 17500 }], kmHistory: [{ date: "2025-02-01", km: 7500, type: "oil_change", added: 0 }, { date: "2025-02-05", km: 8000, type: "update", added: 500 }] },
+      { id: "c4", plate: "ك ل م 3456", brand: "Audi", model: "Q7", year: 2023, status: "available", currentKm: 15000, dailyPrice: 22000, oilChanges: [{ date: "2024-12-10", km: 5000, nextOilKm: 15000 }], kmHistory: [{ date: "2024-12-10", km: 5000, type: "oil_change", added: 0 }, { date: "2025-01-20", km: 15000, type: "update", added: 10000 }] },
+      { id: "c5", plate: "س ص ع 7890", brand: "Range Rover", model: "Sport", year: 2024, status: "maintenance", currentKm: 5000, dailyPrice: 32000, oilChanges: [], kmHistory: [{ date: "2025-02-10", km: 5000, type: "initial", added: 0 }] }
     ],
     customers: [
       { id: "u1", name: "محمد العلي", phone: "0500000001", whitelisted: true, blacklisted: false, createdAt: todayStr() },
@@ -513,7 +521,7 @@ const RES_STATUS_META = {
 };
 
 /* ============================================================
-   🛢️ نظام تتبع الزيت والكيلومترات
+   🛢️ نظام تتبع الزيت والكيلومترات - تراكمي
    ============================================================ */
 function getOilStatus(car) {
   if (!car || !car.oilChanges || car.oilChanges.length === 0) {
@@ -541,27 +549,39 @@ function getOilStatus(car) {
   return { status, label, kmLeft, lastOilKm: lastOil.km, nextOilKm: lastOil.km + interval };
 }
 
-function updateCarKm(carId, newKm) {
+/* ============================================================
+   🔄 دالة تحديث الكيلومترات - تراكمي
+   ============================================================ */
+function updateCarKm(carId, addedKm) {
   const car = db.cars.find(c => c.id === carId);
   if (!car) return false;
   
-  if (newKm <= car.currentKm) {
-    showToast('⚠️ الكيلومترات يجب أن تكون أكبر من القيمة الحالية', 'error');
+  // التحقق من أن القيمة المدخلة موجبة
+  if (addedKm <= 0) {
+    showToast('⚠️ يجب إدخال مسافة موجبة (أكبر من 0)', 'error');
     return false;
   }
   
+  // حفظ الكيلومترات القديمة لعرضها في السجل
+  const oldKm = car.currentKm;
+  
+  // إضافة الكيلومترات الجديدة إلى العداد الحالي (تراكمي)
+  car.currentKm = oldKm + addedKm;
+  
+  // تسجيل في التاريخ مع توضيح الكمية المضافة
   if (!car.kmHistory) car.kmHistory = [];
   car.kmHistory.push({
     date: todayStr(),
-    km: newKm,
+    km: car.currentKm,
+    added: addedKm,
     type: 'update'
   });
   
-  car.currentKm = newKm;
+  // التحقق من تغيير الزيت
   checkOilChange(car);
   
   saveData();
-  showToast(`✅ تم تحديث الكيلومترات إلى ${newKm} كم`, 'success');
+  showToast(`✅ تمت إضافة ${addedKm} كم → المجموع: ${car.currentKm} كم`, 'success');
   return true;
 }
 
@@ -608,6 +628,7 @@ function recordOilChange(carId) {
   car.kmHistory.push({
     date: todayStr(),
     km: currentKm,
+    added: 0,
     type: 'oil_change'
   });
   
@@ -620,6 +641,21 @@ function getKmHistory(carId) {
   const car = db.cars.find(c => c.id === carId);
   if (!car) return [];
   return car.kmHistory || [];
+}
+
+function getTotalAddedKm(carId) {
+  const car = db.cars.find(c => c.id === carId);
+  if (!car) return 0;
+  
+  let total = 0;
+  if (car.kmHistory) {
+    car.kmHistory.forEach(entry => {
+      if (entry.type === 'update' && entry.added) {
+        total += entry.added;
+      }
+    });
+  }
+  return total;
 }
 
 /* ============================================================
@@ -745,7 +781,19 @@ function getStats() {
     return oilStatus.status === 'critical' || oilStatus.status === 'warning';
   }).length;
   
-  return { totalCars, available, rented, maintenance, totalCustomers, pendingRes, activeRes, completedRes, totalIncome, totalExpense, netProfit, carsNeedOil };
+  // إجمالي الكيلومترات المقطوعة لجميع السيارات
+  let totalKm = 0;
+  db.cars.forEach(c => {
+    if (c.kmHistory) {
+      c.kmHistory.forEach(entry => {
+        if (entry.type === 'update' && entry.added) {
+          totalKm += entry.added;
+        }
+      });
+    }
+  });
+  
+  return { totalCars, available, rented, maintenance, totalCustomers, pendingRes, activeRes, completedRes, totalIncome, totalExpense, netProfit, carsNeedOil, totalKm };
 }
 
 function renderOverview(stats) {
@@ -754,7 +802,7 @@ function renderOverview(stats) {
       <div class="stat-card"><div class="icon">🚗</div><div><div class="label">السيارات</div><div class="value">${stats.totalCars}</div><div class="text-muted" style="font-size:11px;">${stats.available} متاحة</div></div></div>
       <div class="stat-card"><div class="icon">📅</div><div><div class="label">حجوزات نشطة</div><div class="value">${stats.activeRes}</div><div class="text-muted" style="font-size:11px;">${stats.pendingRes} معلقة</div></div></div>
       <div class="stat-card"><div class="icon">💰</div><div><div class="label">صافي الربح</div><div class="value ${stats.netProfit >= 0 ? 'text-success' : 'text-danger'}">${fmtMoney(stats.netProfit)}</div></div></div>
-      <div class="stat-card"><div class="icon">🛢️</div><div><div class="label">سيارات تحتاج زيت</div><div class="value ${stats.carsNeedOil > 0 ? 'text-warning' : 'text-success'}">${stats.carsNeedOil}</div></div></div>
+      <div class="stat-card"><div class="icon">📏</div><div><div class="label">إجمالي الكيلومترات</div><div class="value">${stats.totalKm.toLocaleString()} كم</div><div class="text-muted" style="font-size:11px;">${stats.carsNeedOil} سيارات تحتاج زيت</div></div></div>
     </div>
     
     <div class="card fade-in">
@@ -823,6 +871,7 @@ function renderCars() {
       const meta = STATUS_META[car.status] || STATUS_META.available;
       const oilStatus = getOilStatus(car);
       const oilClass = oilStatus.status === 'good' ? 'oil-good' : oilStatus.status === 'warning' ? 'oil-warning' : 'oil-critical';
+      const totalAdded = getTotalAddedKm(car.id);
       
       return `
         <div class="car-item fade-in">
@@ -830,12 +879,12 @@ function renderCars() {
             <div>
               <div class="name">${esc(car.brand)} ${esc(car.model)} · ${car.year}</div>
               <div class="info">${esc(car.plate)} · ${fmtMoney(car.dailyPrice)}/يوم</div>
-              <div class="info">📏 ${car.currentKm} كم</div>
+              <div class="info">📏 <strong>${car.currentKm}</strong> كم <span class="km-display">+${totalAdded} كم مقطوعة</span></div>
               <div class="info"><span class="oil-status ${oilClass}">🛢️ ${oilStatus.label}</span></div>
             </div>
             <div style="text-align:left;">
               <span class="badge" style="background:${meta.color}22;color:${meta.color};border:1px solid ${meta.color}44;display:block;margin-bottom:4px;">${meta.label}</span>
-              <button class="btn btn-subtle btn-sm" onclick="openKmUpdate('${car.id}')">📏 تحديث الكيلومترات</button>
+              <button class="btn btn-subtle btn-sm" onclick="openKmUpdate('${car.id}')">➕ إضافة كيلومترات</button>
             </div>
           </div>
           <div class="actions-wrap">
@@ -859,9 +908,11 @@ function openKmUpdate(carId) {
 
 function submitKmUpdate() {
   const carId = state.modal.carId;
-  const newKm = Number(document.getElementById('km-update').value);
-  if (!newKm) return showToast('أدخل قراءة الكيلومترات', 'error');
-  if (updateCarKm(carId, newKm)) {
+  const addedKm = Number(document.getElementById('km-update').value);
+  if (!addedKm || addedKm <= 0) {
+    return showToast('⚠️ أدخل مسافة موجبة (أكبر من 0)', 'error');
+  }
+  if (updateCarKm(carId, addedKm)) {
     state.modal = null;
     render();
   }
@@ -940,7 +991,7 @@ function submitAddCar() {
     currentKm: 0,
     dailyPrice: price,
     oilChanges: [],
-    kmHistory: [{ date: todayStr(), km: 0, type: 'initial' }]
+    kmHistory: [{ date: todayStr(), km: 0, added: 0, type: 'initial' }]
   });
   
   saveData();
@@ -1076,7 +1127,7 @@ function submitCompleteRes() {
   const r = db.reservations.find(r => r.id === state.modal.resId);
   if (!r) return;
   const km = Number(document.getElementById('complete-km').value);
-  if (!km) return showToast('أدخل قراءة الكيلومترات', 'error');
+  if (!km || km <= 0) return showToast('أدخل قراءة الكيلومترات (أكبر من 0)', 'error');
   const car = db.cars.find(c => c.id === r.carId);
   if (car) { 
     car.status = 'available'; 
@@ -1499,13 +1550,24 @@ function renderModal() {
   if (m.type === 'kmUpdate') {
     const car = db.cars.find(c => c.id === m.carId);
     if (!car) return '';
-    title = `📏 تحديث الكيلومترات - ${esc(car.brand)} ${esc(car.model)}`;
+    title = `➕ إضافة كيلومترات - ${esc(car.brand)} ${esc(car.model)}`;
     content = `
-      <div class="input-group">
-        <label>الكيلومترات الحالية: ${car.currentKm} كم</label>
-        <input id="km-update" class="input" type="number" placeholder="أدخل القراءة الجديدة" min="${car.currentKm}" />
+      <div style="background:#1A212E;padding:12px;border-radius:8px;margin-bottom:12px;">
+        <div class="flex-between">
+          <span class="text-muted">العداد الحالي:</span>
+          <span style="font-size:18px;font-weight:700;">${car.currentKm} كم</span>
+        </div>
+        <div class="flex-between" style="margin-top:4px;">
+          <span class="text-muted">إجمالي المقطوع:</span>
+          <span style="font-weight:600;color:#F2B134;">+${getTotalAddedKm(car.id)} كم</span>
+        </div>
       </div>
-      <button class="btn btn-primary btn-block" onclick="submitKmUpdate()">✅ تحديث</button>
+      <div class="input-group">
+        <label>📏 المسافة المضافة (كم)</label>
+        <input id="km-update" class="input" type="number" placeholder="أدخل المسافة المقطوعة" min="1" />
+        <div style="font-size:11px;color:#8B93A1;margin-top:4px;">سيتم إضافة هذه المسافة إلى العداد الحالي</div>
+      </div>
+      <button class="btn btn-primary btn-block" onclick="submitKmUpdate()">➕ إضافة و تحديث</button>
     `;
   }
   
@@ -1535,19 +1597,24 @@ function renderModal() {
     content = `
       <div style="max-height:400px;overflow-y:auto;">
         <table>
-          <thead><tr><th>التاريخ</th><th>الكيلومترات</th><th>النوع</th></tr></thead>
+          <thead><tr><th>التاريخ</th><th>العداد الكلي</th><th>المضاف</th><th>النوع</th></tr></thead>
           <tbody>
-            ${history.length === 0 ? `<tr><td colspan="3" class="text-center text-muted">لا يوجد تاريخ</td></tr>` :
+            ${history.length === 0 ? `<tr><td colspan="4" class="text-center text-muted">لا يوجد تاريخ</td></tr>` :
             history.map(h => {
               const typeMap = { initial: 'بداية', update: 'تحديث', oil_change: '🛢️ تغيير زيت' };
               return `<tr>
                 <td>${h.date}</td>
                 <td>${h.km} كم</td>
+                <td>${h.added ? '+'+h.added : '-'}</td>
                 <td>${typeMap[h.type] || h.type}</td>
               </tr>`;
             }).join('')}
           </tbody>
         </table>
+        <div style="margin-top:12px;padding:8px;background:#1A212E;border-radius:6px;">
+          <span class="text-muted">📏 إجمالي الكيلومترات المقطوعة:</span>
+          <strong style="color:#F2B134;">${getTotalAddedKm(car.id)} كم</strong>
+        </div>
       </div>
     `;
     wide = true;
@@ -1578,7 +1645,7 @@ function renderModal() {
   if (m.type === 'completeRes') {
     title = '✅ إتمام إرجاع السيارة';
     content = `
-      <div class="input-group"><label>قراءة الكيلومترات عند الإرجاع</label><input id="complete-km" class="input" type="number" placeholder="أدخل القراءة" /></div>
+      <div class="input-group"><label>📏 المسافة المقطوعة (كم)</label><input id="complete-km" class="input" type="number" placeholder="أدخل المسافة المقطوعة" min="1" /></div>
       <button class="btn btn-success btn-block" onclick="submitCompleteRes()">✅ تأكيد الإرجاع</button>
     `;
   }
@@ -1678,7 +1745,7 @@ function closeModal() {
 }
 
 /* ============================================================
-   🚀 بدء التطبيق مع الاتصال بالسيرفر location-c06ec
+   🚀 بدء التطبيق
    ============================================================ */
 setTimeout(() => {
   if (typeof firebase !== 'undefined') {
@@ -1703,7 +1770,7 @@ setTimeout(() => {
   }
 }, 500);
 
-console.log('🔐 Adam Locations - لوحة التحكم V2');
+console.log('🔐 Adam Locations - لوحة التحكم V2 (كيلومترات تراكمية)');
 console.log('🌐 السيرفر: location-c06ec');
 console.log('📊 السيارات:', db.cars.length);
 console.log('👥 الزبائن:', db.customers.length);
